@@ -35,9 +35,16 @@ def update_version(new_version: str) -> None:
     """Update version in pyproject.toml."""
     pyproject_path = Path("pyproject.toml")
     content = pyproject_path.read_text()
+    
+    # Only update the project version in the [project] section
+    # Use a more specific regex to avoid updating other version fields
     updated_content = re.sub(
-        r'version = "[^"]+"', f'version = "{new_version}"', content
+        r'(\[project\].*?version = ")[^"]+(")',
+        rf'\g<1>{new_version}\g<2>',
+        content,
+        flags=re.DOTALL
     )
+    
     pyproject_path.write_text(updated_content)
     print(f"Updated version to {new_version} in pyproject.toml")
 

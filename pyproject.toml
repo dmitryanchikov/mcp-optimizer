@@ -55,7 +55,7 @@ build-backend = "hatchling.build"
 packages = ["src/mcp_optimizer"]
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py312"
 line-length = 88
 
 [tool.ruff.lint]
@@ -84,7 +84,7 @@ line-ending = "auto"
 docstring-code-format = false
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 check_untyped_defs = true
 disallow_any_generics = true
 disallow_incomplete_defs = true
