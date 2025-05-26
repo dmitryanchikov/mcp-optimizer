@@ -3,7 +3,7 @@ name = "mcp-optimizer"
 version = "0.2.0"
 description = "MCP server for mathematical optimization problems using PuLP and OR-Tools"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 authors = [
     { name = "MCP Optimizer Team" }
 ]
@@ -13,6 +13,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
@@ -83,7 +84,7 @@ line-ending = "auto"
 docstring-code-format = false
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.11"
 check_untyped_defs = true
 disallow_any_generics = true
 disallow_incomplete_defs = true
