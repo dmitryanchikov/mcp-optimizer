@@ -61,7 +61,13 @@ jobs:
       run: uv python install 3.12
 
     - name: Install dependencies
-      run: uv sync --dev
+      run: uv sync --all-extras --dev
+
+    - name: Install bandit explicitly (fallback)
+      run: uv add --dev bandit --no-sync || true
+
+    - name: Verify bandit installation
+      run: uv run bandit --version
 
     - name: Run security scan
       run: uv run bandit -r src/ -f json -o bandit-report.json
@@ -132,7 +138,7 @@ jobs:
       run: uv python install 3.12
 
     - name: Install dependencies
-      run: uv sync --dev
+      run: uv sync --all-extras --dev
 
     - name: Build package
       run: uv build

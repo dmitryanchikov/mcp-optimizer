@@ -55,7 +55,7 @@ build-backend = "hatchling.build"
 packages = ["src/mcp_optimizer"]
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py311"
 line-length = 88
 
 [tool.ruff.lint]
