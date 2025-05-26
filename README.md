@@ -9,33 +9,106 @@
 
 ## 🚀 Quick Start
 
-### Option 1: Using uvx (Recommended)
-```bash
-# Run directly with uvx (no installation needed)
-uvx mcp-optimizer
+### Integration with LLM Clients
 
-# Or run specific commands
-uvx mcp-optimizer --help
+#### Claude Desktop Integration
+
+**Option 1: Using uvx (Recommended)**
+1. Install Claude Desktop from [claude.ai](https://claude.ai/download)
+2. Open Claude Desktop → Settings → Developer → Edit Config
+3. Add to your `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "mcp-optimizer": {
+      "command": "uvx",
+      "args": ["mcp-optimizer"]
+    }
+  }
+}
+```
+4. Restart Claude Desktop and look for the 🔨 tools icon
+
+**Option 2: Using pip**
+```bash
+pip install mcp-optimizer
+```
+Then add to your Claude Desktop config:
+```json
+{
+  "mcpServers": {
+    "mcp-optimizer": {
+      "command": "mcp-optimizer"
+    }
+  }
+}
 ```
 
-### Option 2: Using pip
+**Option 3: Using Docker**
+
+*Method A: Docker with stdio (Recommended)*
 ```bash
-# Install from PyPI
-pip install mcp-optimizer
+docker pull ghcr.io/dmitryanchikov/mcp-optimizer:latest
+```
+Then add to your Claude Desktop config:
+```json
+{
+  "mcpServers": {
+    "mcp-optimizer": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "ghcr.io/dmitryanchikov/mcp-optimizer:latest",
+        "python", "main.py"
+      ]
+    }
+  }
+}
+```
+
+*Method B: Docker as HTTP server (for advanced users)*
+```bash
+docker run -d -p 8000:8000 ghcr.io/dmitryanchikov/mcp-optimizer:latest
+```
+Then use HTTP client to connect to `http://localhost:8000` (requires additional MCP HTTP client setup)
+
+#### Cursor Integration
+
+1. Install the MCP extension in Cursor
+2. Add mcp-optimizer to your workspace settings:
+```json
+{
+  "mcp.servers": {
+    "mcp-optimizer": {
+      "command": "uvx",
+      "args": ["mcp-optimizer"]
+    }
+  }
+}
+```
+
+#### Other LLM Clients
+
+For other MCP-compatible clients (Continue, Cody, etc.), use similar configuration patterns with the appropriate command for your installation method.
+
+### Advanced Installation Options
+
+#### Local Development
+```bash
+# Clone the repository
+git clone https://github.com/dmitryanchikov/mcp-optimizer.git
+cd mcp-optimizer
+
+# Install dependencies with uv
+uv sync --extra dev
 
 # Run the server
-mcp-optimizer
-
-# Or run with Python module
-python -m mcp_optimizer
+uv run python main.py
 ```
 
-### Option 3: Using Docker
+#### Docker with Custom Configuration
 ```bash
-# Pull and run the optimized Docker image
-docker run -p 8000:8000 ghcr.io/your-repo/mcp-optimizer:latest
-
-# Or build locally with optimization
+# Build locally with optimization
 git clone https://github.com/dmitryanchikov/mcp-optimizer.git
 cd mcp-optimizer
 docker build -t mcp-optimizer:optimized .
@@ -48,25 +121,19 @@ docker images mcp-optimizer:optimized
 ./scripts/test_docker_optimization.sh
 ```
 
-#### 🐳 Docker Optimization Results
-- **Original image**: 1.03GB
-- **Optimized image**: 398MB  
-- **Size reduction**: 61% (632MB saved!)
-- **Features**: Multi-stage build, uv caching, Python optimization, security hardening
-
-See [Docker Optimization Guide](docs/DOCKER_OPTIMIZATION.md) for details.
-
-### Option 4: Local Development
+#### Standalone Server Commands
 ```bash
-# Clone the repository
-git clone https://github.com/dmitryanchikov/mcp-optimizer.git
-cd mcp-optimizer
+# Run directly with uvx (no installation needed)
+uvx mcp-optimizer
 
-# Install dependencies with uv
-uv sync --extra dev
+# Or run specific commands
+uvx mcp-optimizer --help
 
-# Run the server
-uv run python main.py
+# With pip installation
+mcp-optimizer
+
+# Or run with Python module (use main.py for stdio mode)
+python main.py
 ```
 
 ## 🎯 Features
