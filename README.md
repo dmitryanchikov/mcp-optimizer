@@ -30,7 +30,7 @@ mcp-optimizer
 python -m mcp_optimizer
 ```
 
-### Option 3: Using Docker (Optimized)
+### Option 3: Using Docker
 ```bash
 # Pull and run the optimized Docker image
 docker run -p 8000:8000 ghcr.io/your-repo/mcp-optimizer:latest

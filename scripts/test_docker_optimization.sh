@@ -204,26 +204,26 @@ else:
 test_mcp_server() {
     print_status "Testing MCP server startup..."
     
-    # Start container in background
-    container_id=$(docker run -d -p 8001:8000 "$IMAGE_NAME")
+    # Test MCP server creation and JSON-RPC communication
+    if echo '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test", "version": "1.0"}}}' | docker run --rm -i "$IMAGE_NAME" | grep -q '"result"'; then
+        print_success "MCP server responds to JSON-RPC requests"
+    else
+        print_error "MCP server failed to respond to JSON-RPC requests"
+        return 1
+    fi
     
-    # Wait for startup
-    sleep 5
-    
-    # Test if server is responding (basic check)
-    if docker exec "$container_id" python -c "
+    # Test server creation without running
+    if docker run --rm "$IMAGE_NAME" python -c "
 from mcp_optimizer.mcp_server import create_mcp_server
 server = create_mcp_server()
 print('✅ MCP server created successfully')
+print(f'Server type: {type(server)}')
 "; then
-        print_success "MCP server startup works"
+        print_success "MCP server creation works"
     else
-        print_error "MCP server startup failed"
+        print_error "MCP server creation failed"
+        return 1
     fi
-    
-    # Cleanup
-    docker stop "$container_id" > /dev/null 2>&1
-    docker rm "$container_id" > /dev/null 2>&1
 }
 
 # Function to test memory usage

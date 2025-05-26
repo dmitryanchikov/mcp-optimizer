@@ -1,14 +1,14 @@
 # Stage 1: Build dependencies
 FROM python:3.12-slim AS builder
 
-# Build-time dependencies
+# Build-time dependencies - minimize layers and clean up in same RUN
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
+    && pip install -U pip uv \
     && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
-
-RUN pip install -U pip uv
+    && apt-get clean \
+    && rm -rf /var/cache/apt/archives/*
 
 WORKDIR /build
 COPY pyproject.toml README.md ./
@@ -26,37 +26,43 @@ RUN --mount=type=cache,target=/build/.uv \
       uv pip install --no-cache ".[dev]"; \
     fi
 
-# Clean up build artifacts and cache (but keep essential test modules)
+# Conservative cleanup for smaller image
 RUN find /build/venv -name "*.pyc" -delete \
     && find /build/venv -name "__pycache__" -type d -exec rm -rf {} + \
     && find /build/venv -name "*.pyo" -delete \
     && rm -rf /build/venv/lib/python*/site-packages/pip \
-    && rm -rf /build/venv/lib/python*/site-packages/setuptools
+    && rm -rf /build/venv/lib/python*/site-packages/setuptools \
+    && rm -rf /build/venv/lib/python*/site-packages/wheel
 
-# Stage 2: Final image
+# Stage 2: Final image - use distroless-like approach
 FROM python:3.12-slim
 
-# Runtime dependencies
+# Runtime dependencies and user creation in single layer
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
+    && groupadd -g 1000 mcp && useradd -u 1000 -g mcp -s /bin/bash -m mcp \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean \
     && rm -rf /var/cache/apt/archives/* \
     && rm -rf /usr/share/doc/* \
     && rm -rf /usr/share/man/* \
-    && rm -rf /usr/share/locale/*
+    && rm -rf /usr/share/locale/* \
+    && rm -rf /usr/share/info/* \
+    && rm -rf /tmp/* \
+    && rm -rf /var/tmp/*
 
-# Create non-root user
-RUN groupadd -g 1000 mcp && useradd -u 1000 -g mcp -s /bin/bash -m mcp
-
-# Copy with correct ownership
-COPY --from=builder --chown=mcp:mcp /build/venv /venv
-
+# Copy with correct ownership and set working directory
 WORKDIR /code
-COPY --chown=mcp:mcp ./src /code/src
-COPY --chown=mcp:mcp main.py /code/
+COPY --from=builder --chown=mcp:mcp /build/venv /venv
+COPY --chown=mcp:mcp ./src ./main.py ./
 
-# Switch to non-root user
+# Final cleanup and switch to non-root user
+RUN find /venv -name "*.pyc" -delete \
+    && find /venv -name "__pycache__" -type d -exec rm -rf {} + \
+    && rm -rf /root/.cache \
+    && rm -rf /tmp/* \
+    && rm -rf /var/tmp/*
+
 USER mcp
 
 ENV PATH="/venv/bin:$PATH" \
