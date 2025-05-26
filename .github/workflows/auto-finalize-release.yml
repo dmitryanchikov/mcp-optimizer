@@ -8,7 +8,8 @@ jobs:
   auto-finalize-release:
     runs-on: ubuntu-latest
     # Trigger only when a release commit is merged to main
-    if: contains(github.event.head_commit.message, 'chore: prepare release v')
+    if: >
+      contains(github.event.head_commit.message, 'chore: prepare release v')
     permissions:
       contents: write
       actions: write
