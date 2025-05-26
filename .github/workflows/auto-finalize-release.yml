@@ -7,9 +7,6 @@ on:
 jobs:
   auto-finalize-release:
     runs-on: ubuntu-latest
-    # Trigger only when a release commit is merged to main
-    if: >
-      contains(github.event.head_commit.message, 'chore: prepare release v')
     permissions:
       contents: write
       actions: write
@@ -21,54 +18,130 @@ jobs:
         fetch-depth: 0
         token: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Detect release merge
+      id: detect_release
+      run: |
+        echo "🔍 Checking for release branch merge..."
+        
+        # Get the merge commit message
+        MERGE_MSG="${{ github.event.head_commit.message }}"
+        echo "📝 Commit message: $MERGE_MSG"
+        
+        # Check for merge from release/* branch
+        RELEASE_VERSION=$(echo "$MERGE_MSG" | grep -oP "Merge pull request #\d+ from [^/]+/release/v\K[0-9]+\.[0-9]+\.[0-9]+" || echo "")
+        
+        # Check for merge from hotfix/* branch  
+        HOTFIX_VERSION=$(echo "$MERGE_MSG" | grep -oP "Merge pull request #\d+ from [^/]+/hotfix/v\K[0-9]+\.[0-9]+\.[0-9]+" || echo "")
+        
+        # Determine release type and version
+        IS_RELEASE="false"
+        RELEASE_VERSION=""
+        RELEASE_TYPE=""
+        
+        if [ -n "$RELEASE_VERSION" ]; then
+          IS_RELEASE="true"
+          RELEASE_TYPE="regular"
+          echo "✅ Regular release detected: v$RELEASE_VERSION"
+        elif [ -n "$HOTFIX_VERSION" ]; then
+          IS_RELEASE="true"
+          RELEASE_VERSION="$HOTFIX_VERSION"
+          RELEASE_TYPE="hotfix"
+          echo "✅ Hotfix release detected: v$RELEASE_VERSION"
+        else
+          echo "ℹ️ No release branch merge detected, skipping finalization"
+        fi
+        
+        # Validate version format
+        if [ "$IS_RELEASE" = "true" ]; then
+          if [[ ! "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ Invalid version format: $RELEASE_VERSION"
+            IS_RELEASE="false"
+          fi
+        fi
+        
+        echo "is_release=$IS_RELEASE" >> $GITHUB_OUTPUT
+        echo "version=$RELEASE_VERSION" >> $GITHUB_OUTPUT
+        echo "release_type=$RELEASE_TYPE" >> $GITHUB_OUTPUT
+
     - name: Install uv
+      if: steps.detect_release.outputs.is_release == 'true'
       uses: astral-sh/setup-uv@v3
       with:
         version: "latest"
 
     - name: Set up Python
+      if: steps.detect_release.outputs.is_release == 'true'
       run: uv python install 3.12
 
     - name: Install dependencies
+      if: steps.detect_release.outputs.is_release == 'true'
       run: uv sync --all-extras --dev
 
     - name: Configure Git
+      if: steps.detect_release.outputs.is_release == 'true'
       run: |
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-    - name: Extract version from commit message
-      id: version
+    - name: Validate release readiness
+      if: steps.detect_release.outputs.is_release == 'true'
       run: |
-        COMMIT_MSG="${{ github.event.head_commit.message }}"
-        VERSION=$(echo "$COMMIT_MSG" | grep -oP 'chore: prepare release v\K[0-9]+\.[0-9]+\.[0-9]+')
-        if [ -z "$VERSION" ]; then
-          echo "❌ Could not extract version from commit message: $COMMIT_MSG"
+        echo "🔍 Validating release readiness..."
+        
+        # Check that version in pyproject.toml matches detected version
+        PYPROJECT_VERSION=$(grep -oP 'version = "\K[^"]+' pyproject.toml)
+        if [ "$PYPROJECT_VERSION" != "${{ steps.detect_release.outputs.version }}" ]; then
+          echo "❌ Version mismatch: pyproject.toml has $PYPROJECT_VERSION, detected ${{ steps.detect_release.outputs.version }}"
           exit 1
         fi
-        echo "version=${VERSION}" >> $GITHUB_OUTPUT
-        echo "✅ Detected version: ${VERSION}"
+        
+        # Check that tag doesn't already exist
+        if git tag -l | grep -q "^v${{ steps.detect_release.outputs.version }}$"; then
+          echo "❌ Tag v${{ steps.detect_release.outputs.version }} already exists"
+          exit 1
+        fi
+        
+        # Check that we're on main branch
+        CURRENT_BRANCH=$(git branch --show-current)
+        if [ "$CURRENT_BRANCH" != "main" ]; then
+          echo "❌ Not on main branch, currently on: $CURRENT_BRANCH"
+          exit 1
+        fi
+        
+        echo "✅ Release validation passed"
 
     - name: Wait for CI to complete
+      if: steps.detect_release.outputs.is_release == 'true'
       run: |
         echo "⏳ Waiting 30 seconds for CI pipeline to complete..."
         sleep 30
 
     - name: Run finalize release script
+      if: steps.detect_release.outputs.is_release == 'true'
       run: |
-        echo "🚀 Auto-finalizing release v${{ steps.version.outputs.version }}"
-        uv run python scripts/finalize_release.py --version ${{ steps.version.outputs.version }} --skip-ci-check
+        echo "🚀 Auto-finalizing ${{ steps.detect_release.outputs.release_type }} release v${{ steps.detect_release.outputs.version }}"
+        uv run python scripts/finalize_release.py --version ${{ steps.detect_release.outputs.version }} --skip-ci-check
 
     - name: Create summary
+      if: steps.detect_release.outputs.is_release == 'true'
       run: |
-        echo "## 🎉 Release v${{ steps.version.outputs.version }} Auto-Finalized!" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "The release has been automatically finalized and published:" >> $GITHUB_STEP_SUMMARY
+        RELEASE_TYPE="${{ steps.detect_release.outputs.release_type }}"
+        VERSION="${{ steps.detect_release.outputs.version }}"
+        
+        if [ "$RELEASE_TYPE" = "hotfix" ]; then
+          EMOJI="🚨"
+          TYPE_TEXT="Hotfix"
+        else
+          EMOJI="🎉"
+          TYPE_TEXT="Release"
+        fi
+        
+        echo "## $EMOJI $TYPE_TEXT v$VERSION Auto-Finalized!" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📦 Release Artifacts" >> $GITHUB_STEP_SUMMARY
-        echo "- **PyPI Package**: https://pypi.org/project/mcp-optimizer/${{ steps.version.outputs.version }}/" >> $GITHUB_STEP_SUMMARY
-        echo "- **Docker Image**: \`ghcr.io/dmitryanchikov/mcp-optimizer:${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
-        echo "- **GitHub Release**: https://github.com/dmitryanchikov/mcp-optimizer/releases/tag/v${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **PyPI Package**: https://pypi.org/project/mcp-optimizer/$VERSION/" >> $GITHUB_STEP_SUMMARY
+        echo "- **Docker Image**: \`ghcr.io/dmitryanchikov/mcp-optimizer:$VERSION\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **GitHub Release**: https://github.com/dmitryanchikov/mcp-optimizer/releases/tag/v$VERSION" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### ✅ Automated Actions Completed" >> $GITHUB_STEP_SUMMARY
         echo "- [x] Created and pushed release tag" >> $GITHUB_STEP_SUMMARY
@@ -76,8 +149,26 @@ jobs:
         echo "- [x] Triggered Docker image publication" >> $GITHUB_STEP_SUMMARY
         echo "- [x] Merged main back to develop" >> $GITHUB_STEP_SUMMARY
         echo "- [x] Cleaned up release branch" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🔒 Security & Reliability" >> $GITHUB_STEP_SUMMARY
+        echo "This release was automatically detected through:" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Merge from protected release/hotfix branch" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Required PR approvals and checks" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Branch protection rules enforcement" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Version validation and consistency checks" >> $GITHUB_STEP_SUMMARY
 
     - name: Notify completion
+      if: steps.detect_release.outputs.is_release == 'true'
       run: |
-        echo "✅ Release v${{ steps.version.outputs.version }} has been automatically finalized!"
+        RELEASE_TYPE="${{ steps.detect_release.outputs.release_type }}"
+        VERSION="${{ steps.detect_release.outputs.version }}"
+        
+        if [ "$RELEASE_TYPE" = "hotfix" ]; then
+          echo "🚨 Hotfix v$VERSION has been automatically finalized!"
+        else
+          echo "✅ Release v$VERSION has been automatically finalized!"
+        fi
         echo "🎉 All release artifacts are being published automatically."
+        echo ""
+        echo "📊 Monitor the release progress:"
+        echo "- GitHub Actions: https://github.com/dmitryanchikov/mcp-optimizer/actions"

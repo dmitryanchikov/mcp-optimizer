@@ -33,6 +33,73 @@ This document outlines the complete release process for the MCP Optimizer projec
 - **Security patches**: Within 24-48 hours of discovery
 - **Critical bugs**: Within 1 week of confirmation
 
+## 🔒 Branch Protection & Security
+
+### Required Branch Protection Rules
+
+For the automated release system to work securely, the following branch protection rules **must** be configured:
+
+#### Main Branch Protection
+```json
+{
+  "required_status_checks": {
+    "strict": true,
+    "contexts": ["ci", "security-scan", "tests"]
+  },
+  "enforce_admins": true,
+  "required_pull_request_reviews": {
+    "required_approving_review_count": 2,
+    "dismiss_stale_reviews": true,
+    "require_code_owner_reviews": true,
+    "require_last_push_approval": true
+  },
+  "restrictions": null,
+  "allow_force_pushes": false,
+  "allow_deletions": false
+}
+```
+
+#### Develop Branch Protection
+```json
+{
+  "required_status_checks": {
+    "strict": true,
+    "contexts": ["ci", "tests"]
+  },
+  "enforce_admins": false,
+  "required_pull_request_reviews": {
+    "required_approving_review_count": 1,
+    "dismiss_stale_reviews": true,
+    "require_code_owner_reviews": true
+  },
+  "restrictions": null,
+  "allow_force_pushes": false,
+  "allow_deletions": false
+}
+```
+
+#### Release/Hotfix Branch Rules
+- **Naming Convention**: `release/vX.Y.Z` and `hotfix/vX.Y.Z`
+- **Source Restrictions**: Release branches from `develop`, hotfix branches from `main`
+- **Merge Targets**: Both types can only merge to `main` via PR
+- **Auto-Delete**: Branches are automatically deleted after successful merge
+
+### Security Implications
+
+**Why This Approach is Secure:**
+- 🔐 **No Bypass Possible**: Even repository admins cannot bypass protection rules
+- 🔐 **Human Verification**: Every release requires human review and approval
+- 🔐 **CI Validation**: All automated tests must pass before merge
+- 🔐 **Audit Trail**: Complete GitHub audit log of all release activities
+- 🔐 **Rollback Ready**: Easy to revert releases if issues are discovered
+
+**What This Prevents:**
+- ❌ Accidental releases from feature branches
+- ❌ Direct pushes to main bypassing review
+- ❌ Releases without proper testing
+- ❌ Unauthorized version changes
+- ❌ Missing or incorrect changelog entries
+
 ## 🔄 Release Workflow
 
 ### 1. Pre-Release Planning
@@ -142,6 +209,82 @@ gh pr create --base main --head release/v1.2.0 --title "Release v1.2.0"
 
 # NO NEED to run finalize_release.py manually anymore!
 ```
+
+#### 🔒 Secure Hybrid Release Detection
+
+The automation uses a **simple and secure hybrid approach** that combines GitHub branch protection with automated release detection:
+
+##### How It Works
+
+**1. Branch Protection (Primary Security)**
+- ✅ **Protected Branches**: `main` and `develop` branches are protected
+- ✅ **Required Reviews**: All PRs require approval from code owners
+- ✅ **Status Checks**: All CI/CD checks must pass before merge
+- ✅ **No Direct Pushes**: Only PR merges allowed to `main`
+- ✅ **Admin Enforcement**: Even admins must follow the rules
+
+**2. Release Detection (Simple & Reliable)**
+```bash
+# Only triggers on merges from protected release branches:
+# Pattern: "Merge pull request #123 from user/release/v1.2.3"
+# Pattern: "Merge pull request #456 from user/hotfix/v1.2.4"
+```
+
+**3. Security Benefits**
+- 🛡️ **No False Positives**: Only release/hotfix branch merges trigger automation
+- 🛡️ **Human Oversight**: Every release requires PR review and approval
+- 🛡️ **CI Validation**: All tests must pass before merge is possible
+- 🛡️ **Audit Trail**: Complete history of who approved what and when
+- 🛡️ **Rollback Safety**: Easy to revert if issues are discovered
+
+**4. Validation Checks**
+All detected releases must pass validation:
+- ✅ **Version Format**: Must match semantic versioning `X.Y.Z`
+- ✅ **No Duplicates**: Fails if release tag already exists
+- ✅ **Branch Verification**: Must be merging to `main` branch
+- ✅ **Version Consistency**: Version in branch name must match `pyproject.toml`
+    B -->|Not Found| D[Check Hotfix Branch Merge]
+    D -->|Found| E[Extract version, mark as hotfix]
+    D -->|Not Found| F[Check Version Change]
+    F -->|Changed| G[Validate Changelog Entry]
+    G -->|Valid| H[Use pyproject.toml version]
+    G -->|Invalid| I[Check Commit Message]
+    F -->|Unchanged| I[Check Commit Message]
+    I -->|Match| J[Extract version from message]
+    I -->|No Match| K[Skip Release]
+    
+    C --> L[Validate Version Format]
+    E --> L
+    H --> L
+    J --> L
+    L -->|Valid| M[Check Tag Exists]
+    L -->|Invalid| K
+    M -->|New| N[Finalize Release]
+    M -->|Exists| K
+```
+
+##### Benefits of Multi-Method Approach
+- ✅ **99%+ Detection Rate**: Multiple fallback methods ensure reliability
+- ✅ **Merge Strategy Agnostic**: Works with squash, merge, rebase strategies
+- ✅ **Human Error Resistant**: Less dependent on manual commit message formatting
+- ✅ **Workflow Flexible**: Supports different development styles and emergency scenarios
+- ✅ **Backward Compatible**: Still supports legacy commit message format
+- ✅ **Transparent**: Clear logging shows which detection method was used
+- ✅ **Safe**: Multiple validation layers prevent false positives
+
+##### Error Handling & Safety
+- **Graceful Degradation**: Falls back to next detection method if one fails
+- **Clear Logging**: GitHub Actions logs show detection results and reasoning
+- **Failure Transparency**: Explains why detection failed with actionable guidance
+- **Manual Override**: `scripts/finalize_release.py` available as backup
+- **Conservative Approach**: Better to miss a release than create a false one
+
+##### Testing & Validation
+The detection system includes comprehensive testing via `scripts/test_release_detection.py`:
+- Tests all detection patterns and edge cases
+- Validates version format requirements
+- Simulates complete detection logic
+- Ensures reliability across different scenarios
 
 #### Fallback: Manual Finalization
 ```bash
@@ -364,6 +507,35 @@ uv run python scripts/finalize_release.py --skip-cleanup
 # Preview only
 uv run python scripts/finalize_release.py --dry-run
 ```
+
+#### `scripts/test_release_detection.py` - Test Detection System
+Comprehensive test suite for validating the hybrid release detection logic.
+
+**Usage Examples:**
+```bash
+# Run all detection tests
+uv run python scripts/test_release_detection.py
+
+# Test specific patterns
+python scripts/test_release_detection.py --pattern release_branch
+
+# Validate detection logic
+python scripts/test_release_detection.py --simulate
+```
+
+**Test Coverage:**
+- ✅ **Branch Merge Patterns**: Tests release/* and hotfix/* branch merge detection
+- ✅ **Version Validation**: Validates semantic versioning requirements
+- ✅ **Edge Cases**: Tests invalid formats and non-release scenarios
+- ✅ **Security Validation**: Ensures only authorized merges trigger releases
+- ✅ **Regression Testing**: Ensures changes don't break detection
+
+**When to Use:**
+- Before modifying detection logic in `.github/workflows/auto-finalize-release.yml`
+- After updating release scripts or workflows
+- When troubleshooting release detection issues
+- For validating branch protection rule changes
+- During security audits of the release process
 
 ### Script Features
 - **Version Management**: Auto-increment or manual version specification

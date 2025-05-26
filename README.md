@@ -433,6 +433,8 @@ After PR merge, automatically happens:
 
 **NO NEED** to run `finalize_release.py` manually anymore!
 
+> 🔒 **Secure Detection**: Uses hybrid approach combining GitHub branch protection with automated release detection. See [Release Process](.github/RELEASE_PROCESS.md) for details.
+
 ### Automated Release Pipeline
 The CI/CD pipeline automatically handles:
 - ✅ **Release Candidates**: Built from `release/*` branches
@@ -529,6 +531,7 @@ This project follows a standard Git Flow workflow:
 📚 **Documentation**:
 - [Contributing Guide](CONTRIBUTING.md) - Complete development workflow and Git Flow policy
 - [Release Process](.github/RELEASE_PROCESS.md) - How releases are created and automated
+- [Repository Setup](.github/REPOSITORY_SETUP.md) - Complete setup guide including branch protection and security configuration
 
 ### Development Setup
 ```bash
