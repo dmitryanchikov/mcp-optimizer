@@ -1,0 +1,82 @@
+name: Auto-Finalize Release
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  auto-finalize-release:
+    runs-on: ubuntu-latest
+    # Trigger only when a release commit is merged to main
+    if: contains(github.event.head_commit.message, 'chore: prepare release v')
+    permissions:
+      contents: write
+      actions: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Set up Python
+      run: uv python install 3.12
+
+    - name: Install dependencies
+      run: uv sync --all-extras --dev
+
+    - name: Configure Git
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Extract version from commit message
+      id: version
+      run: |
+        COMMIT_MSG="${{ github.event.head_commit.message }}"
+        VERSION=$(echo "$COMMIT_MSG" | grep -oP 'chore: prepare release v\K[0-9]+\.[0-9]+\.[0-9]+')
+        if [ -z "$VERSION" ]; then
+          echo "❌ Could not extract version from commit message: $COMMIT_MSG"
+          exit 1
+        fi
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "✅ Detected version: ${VERSION}"
+
+    - name: Wait for CI to complete
+      run: |
+        echo "⏳ Waiting 30 seconds for CI pipeline to complete..."
+        sleep 30
+
+    - name: Run finalize release script
+      run: |
+        echo "🚀 Auto-finalizing release v${{ steps.version.outputs.version }}"
+        uv run python scripts/finalize_release.py --version ${{ steps.version.outputs.version }} --skip-ci-check
+
+    - name: Create summary
+      run: |
+        echo "## 🎉 Release v${{ steps.version.outputs.version }} Auto-Finalized!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "The release has been automatically finalized and published:" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📦 Release Artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "- **PyPI Package**: https://pypi.org/project/mcp-optimizer/${{ steps.version.outputs.version }}/" >> $GITHUB_STEP_SUMMARY
+        echo "- **Docker Image**: \`ghcr.io/dmitryanchikov/mcp-optimizer:${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **GitHub Release**: https://github.com/dmitryanchikov/mcp-optimizer/releases/tag/v${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### ✅ Automated Actions Completed" >> $GITHUB_STEP_SUMMARY
+        echo "- [x] Created and pushed release tag" >> $GITHUB_STEP_SUMMARY
+        echo "- [x] Triggered PyPI publication" >> $GITHUB_STEP_SUMMARY
+        echo "- [x] Triggered Docker image publication" >> $GITHUB_STEP_SUMMARY
+        echo "- [x] Merged main back to develop" >> $GITHUB_STEP_SUMMARY
+        echo "- [x] Cleaned up release branch" >> $GITHUB_STEP_SUMMARY
+
+    - name: Notify completion
+      run: |
+        echo "✅ Release v${{ steps.version.outputs.version }} has been automatically finalized!"
+        echo "🎉 All release artifacts are being published automatically."

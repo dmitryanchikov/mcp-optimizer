@@ -329,30 +329,50 @@ Each example includes:
 
 3. **OR-Tools Integration** - Confirmed full functionality of all OR-Tools components
 
-## 🚀 Release Process
+## 🚀 Fully Automated Release Process
 
-### Automated Release
-Use the release script for automated release preparation:
+### New Simplified Git Flow (3 steps!)
+The project uses a fully automated release process:
 
+#### 1. Create Release Branch
 ```bash
-# Prepare a new release (dry run first)
-uv run python scripts/release.py 0.2.0 --dry-run
+# For minor release (auto-increment)
+uv run python scripts/release.py --type minor
 
-# Prepare actual release
+# For specific version
 uv run python scripts/release.py 0.2.0
 
-# Push to trigger CI/CD
-git push origin main --tags
+# For hotfix
+uv run python scripts/release.py --hotfix --type patch
+
+# Preview changes
+uv run python scripts/release.py --type minor --dry-run
 ```
 
-### Manual Release Steps
-1. **Update version** in `pyproject.toml`
-2. **Update CHANGELOG.md** with release notes
-3. **Run tests**: `uv run pytest tests/ -v`
-4. **Build package**: `uv build`
-5. **Create git tag**: `git tag -a v0.2.0 -m "Release 0.2.0"`
-6. **Push tag**: `git push origin main --tags`
-7. **Publish to PyPI**: `uv publish`
+#### 2. Create PR to main
+```bash
+# Create PR: release/v0.3.0 → main
+gh pr create --base main --head release/v0.3.0 --title "Release v0.3.0"
+```
+
+#### 3. Merge PR - DONE! 🎉
+After PR merge, automatically happens:
+- ✅ Create tag v0.3.0
+- ✅ Publish to PyPI
+- ✅ Publish Docker images  
+- ✅ Create GitHub Release
+- ✅ Merge main back to develop
+- ✅ Cleanup release branch
+
+**NO NEED** to run `finalize_release.py` manually anymore!
+
+### Automated Release Pipeline
+The CI/CD pipeline automatically handles:
+- ✅ **Release Candidates**: Built from `release/*` branches
+- ✅ **Production Releases**: Triggered by version tags on `main`
+- ✅ **PyPI Publishing**: Automatic on tag creation
+- ✅ **Docker Images**: Multi-architecture builds
+- ✅ **GitHub Releases**: With artifacts and release notes
 
 ### CI/CD Pipeline
 The GitHub Actions workflow automatically:
@@ -433,11 +453,27 @@ docker run --rm mcp-optimizer:latest python -c "from mcp_optimizer.mcp_server im
 
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
+### Git Flow Policy
+This project follows a standard Git Flow workflow:
+- **Feature branches** → `develop` branch
+- **Release branches** → `main` branch  
+- **Hotfix branches** → `main` and `develop` branches
+
+📚 **Documentation**:
+- [Contributing Guide](CONTRIBUTING.md) - Complete development workflow and Git Flow policy
+- [Release Process](.github/RELEASE_PROCESS.md) - How releases are created and automated
+
 ### Development Setup
 ```bash
 # Clone and setup
 git clone https://github.com/dmitryanchikov/mcp-optimizer.git
 cd mcp-optimizer
+
+# Create feature branch from develop
+git checkout develop
+git checkout -b feature/your-feature-name
+
+# Install dependencies
 uv sync --extra dev
 
 # Run tests
@@ -446,6 +482,8 @@ uv run pytest tests/ -v
 # Run linting
 uv run ruff check src/
 uv run mypy src/
+
+# Create PR to develop branch (not main!)
 ```
 
 ## 📄 License

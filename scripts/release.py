@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Release preparation script for MCP Optimizer."""
+"""Release preparation script for MCP Optimizer with Git Flow support."""
 
 import argparse
 import re
@@ -13,6 +13,12 @@ def run_command(cmd: list[str], check: bool = True) -> subprocess.CompletedProce
     """Run a shell command and return the result."""
     print(f"Running: {' '.join(cmd)}")
     return subprocess.run(cmd, check=check, capture_output=True, text=True)
+
+
+def get_current_branch() -> str:
+    """Get current git branch."""
+    result = run_command(["git", "branch", "--show-current"])
+    return result.stdout.strip()
 
 
 def get_current_version() -> str:
@@ -39,6 +45,10 @@ def update_version(new_version: str) -> None:
 def update_changelog(version: str) -> None:
     """Update CHANGELOG.md with release date."""
     changelog_path = Path("CHANGELOG.md")
+    if not changelog_path.exists():
+        print("⚠️ CHANGELOG.md not found, skipping changelog update")
+        return
+        
     content = changelog_path.read_text()
 
     # Replace [Unreleased] with version and date
@@ -94,52 +104,6 @@ def run_tests() -> bool:
     return True
 
 
-def build_package() -> bool:
-    """Build the Python package."""
-    print("Building package...")
-
-    # Clean previous builds
-    run_command(["rm", "-rf", "dist/"], check=False)
-
-    # Build package
-    result = run_command(["uv", "build"], check=False)
-    if result.returncode != 0:
-        print("❌ Package build failed!")
-        print(result.stdout)
-        print(result.stderr)
-        return False
-
-    print("✅ Package built successfully!")
-    return True
-
-
-def build_docker_image(version: str) -> bool:
-    """Build Docker image."""
-    print("Building Docker image...")
-
-    result = run_command(
-        [
-            "docker",
-            "build",
-            "-t",
-            f"mcp-optimizer:{version}",
-            "-t",
-            "mcp-optimizer:latest",
-            ".",
-        ],
-        check=False,
-    )
-
-    if result.returncode != 0:
-        print("❌ Docker build failed!")
-        print(result.stdout)
-        print(result.stderr)
-        return False
-
-    print("✅ Docker image built successfully!")
-    return True
-
-
 def check_git_status() -> bool:
     """Check if git working directory is clean."""
     result = run_command(["git", "status", "--porcelain"], check=False)
@@ -150,90 +114,202 @@ def check_git_status() -> bool:
     return True
 
 
-def create_git_tag(version: str) -> None:
-    """Create and push git tag."""
-    tag_name = f"v{version}"
+def ensure_on_develop() -> bool:
+    """Ensure we're on develop branch."""
+    current_branch = get_current_branch()
+    if current_branch != "develop":
+        print(f"❌ Must be on 'develop' branch, currently on '{current_branch}'")
+        print("Switch to develop: git checkout develop")
+        return False
+    return True
 
-    # Create tag
+
+def create_release_branch(version: str) -> str:
+    """Create release branch from develop."""
+    branch_name = f"release/v{version}"
+    
+    # Ensure develop is up to date
+    print("Updating develop branch...")
+    run_command(["git", "pull", "origin", "develop"])
+    
+    # Create release branch
+    print(f"Creating release branch: {branch_name}")
+    run_command(["git", "checkout", "-b", branch_name])
+    
+    return branch_name
+
+
+def commit_release_changes(version: str) -> None:
+    """Commit release preparation changes."""
     run_command(["git", "add", "."])
-    run_command(["git", "commit", "-m", f"chore: release version {version}"])
-    run_command(["git", "tag", "-a", tag_name, "-m", f"Release {version}"])
+    run_command(["git", "commit", "-m", f"chore: prepare release v{version}"])
+    print(f"Committed release preparation for v{version}")
 
-    print(f"Created git tag {tag_name}")
-    print("To push the tag, run: git push origin main --tags")
+
+def push_release_branch(branch_name: str) -> None:
+    """Push release branch to origin."""
+    print(f"Pushing release branch: {branch_name}")
+    run_command(["git", "push", "origin", branch_name])
+    print("✅ Release branch pushed to origin")
+    print("CI/CD will now build release candidate")
+
+
+def create_hotfix_branch(version: str) -> str:
+    """Create hotfix branch from main."""
+    branch_name = f"hotfix/v{version}"
+    
+    # Switch to main and update
+    print("Switching to main branch...")
+    run_command(["git", "checkout", "main"])
+    run_command(["git", "pull", "origin", "main"])
+    
+    # Create hotfix branch
+    print(f"Creating hotfix branch: {branch_name}")
+    run_command(["git", "checkout", "-b", branch_name])
+    
+    return branch_name
+
+
+def validate_version_increment(current: str, new: str, release_type: str) -> bool:
+    """Validate that version increment is correct."""
+    current_parts = [int(x) for x in current.split('.')]
+    new_parts = [int(x) for x in new.split('.')]
+    
+    if release_type == "major":
+        expected = [current_parts[0] + 1, 0, 0]
+    elif release_type == "minor":
+        expected = [current_parts[0], current_parts[1] + 1, 0]
+    elif release_type == "patch":
+        expected = [current_parts[0], current_parts[1], current_parts[2] + 1]
+    else:
+        return True  # Allow any version for manual specification
+    
+    if new_parts != expected:
+        print(f"❌ Version increment incorrect for {release_type} release")
+        print(f"Expected: {'.'.join(map(str, expected))}, got: {new}")
+        return False
+    
+    return True
 
 
 def main():
-    """Main release script."""
-    parser = argparse.ArgumentParser(description="Prepare MCP Optimizer release")
-    parser.add_argument("version", help="New version number (e.g., 0.2.0)")
+    """Main release script with Git Flow support."""
+    parser = argparse.ArgumentParser(description="Prepare MCP Optimizer release with Git Flow")
+    parser.add_argument("version", nargs="?", help="New version number (e.g., 0.2.0)")
+    parser.add_argument("--type", choices=["major", "minor", "patch"], 
+                       help="Release type (auto-calculates version)")
+    parser.add_argument("--hotfix", action="store_true", 
+                       help="Create hotfix branch from main")
     parser.add_argument("--skip-tests", action="store_true", help="Skip running tests")
-    parser.add_argument("--skip-docker", action="store_true", help="Skip Docker build")
-    parser.add_argument(
-        "--dry-run", action="store_true", help="Show what would be done"
-    )
+    parser.add_argument("--dry-run", action="store_true", help="Show what would be done")
 
     args = parser.parse_args()
 
-    # Validate version format
-    if not re.match(r"^\d+\.\d+\.\d+$", args.version):
-        print("❌ Version must be in format X.Y.Z (e.g., 0.2.0)")
+    # Determine version
+    current_version = get_current_version()
+    
+    if args.type:
+        # Auto-calculate version based on type
+        parts = [int(x) for x in current_version.split('.')]
+        if args.type == "major":
+            new_version = f"{parts[0] + 1}.0.0"
+        elif args.type == "minor":
+            new_version = f"{parts[0]}.{parts[1] + 1}.0"
+        elif args.type == "patch":
+            new_version = f"{parts[0]}.{parts[1]}.{parts[2] + 1}"
+    elif args.version:
+        new_version = args.version
+        # Validate version format
+        if not re.match(r"^\d+\.\d+\.\d+$", new_version):
+            print("❌ Version must be in format X.Y.Z (e.g., 0.2.0)")
+            sys.exit(1)
+    else:
+        print("❌ Must specify either --type or version number")
         sys.exit(1)
 
-    current_version = get_current_version()
     print(f"Current version: {current_version}")
-    print(f"New version: {args.version}")
+    print(f"New version: {new_version}")
+    
+    # Validate version increment
+    if args.type and not validate_version_increment(current_version, new_version, args.type):
+        sys.exit(1)
 
     if args.dry_run:
         print("🔍 DRY RUN - No changes will be made")
-        print("Steps that would be executed:")
-        print("1. Check git status")
-        print("2. Run tests (if not skipped)")
-        print("3. Update version in pyproject.toml")
-        print("4. Update CHANGELOG.md")
-        print("5. Build Python package")
-        print("6. Build Docker image (if not skipped)")
-        print("7. Create git tag")
+        if args.hotfix:
+            print("Steps for HOTFIX release:")
+            print("1. Switch to main branch")
+            print(f"2. Create hotfix branch: hotfix/v{new_version}")
+            print("3. Update version and changelog")
+            print("4. Run tests")
+            print("5. Commit changes")
+            print("6. Push hotfix branch")
+            print("7. Create PR to main")
+            print("8. Create PR to develop")
+        else:
+            print("Steps for REGULAR release:")
+            print("1. Ensure on develop branch")
+            print(f"2. Create release branch: release/v{new_version}")
+            print("3. Update version and changelog")
+            print("4. Run tests")
+            print("5. Commit changes")
+            print("6. Push release branch")
+            print("7. CI builds release candidate")
+            print("8. Create PR to main for final release")
         return
 
     # Check git status
     if not check_git_status():
         sys.exit(1)
 
+    # Branch creation logic
+    if args.hotfix:
+        print("🚨 Creating HOTFIX release")
+        branch_name = create_hotfix_branch(new_version)
+    else:
+        print("🚀 Creating REGULAR release")
+        if not ensure_on_develop():
+            sys.exit(1)
+        branch_name = create_release_branch(new_version)
+
+    # Update version and changelog
+    update_version(new_version)
+    update_changelog(new_version)
+
     # Run tests
     if not args.skip_tests:
         if not run_tests():
+            print("❌ Tests failed, aborting release")
             sys.exit(1)
     else:
         print("⚠️ Skipping tests")
 
-    # Update version
-    update_version(args.version)
+    # Commit changes
+    commit_release_changes(new_version)
 
-    # Update changelog
-    update_changelog(args.version)
+    # Push branch
+    push_release_branch(branch_name)
 
-    # Build package
-    if not build_package():
-        sys.exit(1)
-
-    # Build Docker image
-    if not args.skip_docker:
-        if not build_docker_image(args.version):
-            sys.exit(1)
+    print(f"🎉 Release {new_version} branch created successfully!")
+    print(f"\nBranch: {branch_name}")
+    
+    if args.hotfix:
+        print("\nNext steps for HOTFIX:")
+        print("1. CI/CD will run tests and build")
+        print("2. Create PR to main for immediate release")
+        print("3. Create PR to develop to include fix")
+        print("4. After merge to main, tag will trigger production release")
     else:
-        print("⚠️ Skipping Docker build")
-
-    # Create git tag
-    create_git_tag(args.version)
-
-    print(f"🎉 Release {args.version} prepared successfully!")
-    print("\nNext steps:")
-    print("1. Review the changes")
-    print("2. Push to GitHub: git push origin main --tags")
-    print("3. Create GitHub release from the tag")
-    print("4. Publish to PyPI: uv publish")
-    print("5. Push Docker image to registry")
+        print("\nNext steps for REGULAR release:")
+        print("1. CI/CD will build release candidate")
+        print("2. Test the release candidate")
+        print("3. Create PR to main when ready")
+        print("4. After merge to main, tag will trigger production release")
+        print("5. Merge main back to develop")
+    
+    print(f"\nRelease candidate will be available as:")
+    print(f"- Docker: ghcr.io/dmitryanchikov/mcp-optimizer:{new_version}-rc")
+    print(f"- GitHub Release: v{new_version}-rc.X")
 
 
 if __name__ == "__main__":

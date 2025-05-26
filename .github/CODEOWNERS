@@ -1,0 +1,59 @@
+# Code Owners for MCP Optimizer
+# 
+# This file defines who is responsible for reviewing changes to specific parts of the codebase.
+# When a pull request is created, the appropriate code owners will be automatically requested for review.
+#
+# More info: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Global owners - these users will be requested for review on all changes
+* @dmitryanchikov
+
+# Core source code
+/src/ @dmitryanchikov
+/src/mcp_optimizer/ @dmitryanchikov
+
+# Optimization tools - require domain expertise
+/src/mcp_optimizer/tools/ @dmitryanchikov
+/src/mcp_optimizer/solvers/ @dmitryanchikov
+
+# Tests - ensure quality and coverage
+/tests/ @dmitryanchikov
+
+# Documentation - ensure accuracy and clarity
+/docs/ @dmitryanchikov
+/README.md @dmitryanchikov
+/CONTRIBUTING.md @dmitryanchikov
+/CHANGELOG.md @dmitryanchikov
+/examples/ @dmitryanchikov
+
+# CI/CD and infrastructure
+/.github/ @dmitryanchikov
+/.github/workflows/ @dmitryanchikov
+/docker/ @dmitryanchikov
+/k8s/ @dmitryanchikov
+/Dockerfile @dmitryanchikov
+/docker-compose.yml @dmitryanchikov
+
+# Configuration files
+/pyproject.toml @dmitryanchikov
+/uv.lock @dmitryanchikov
+/.gitignore @dmitryanchikov
+/.dockerignore @dmitryanchikov
+
+# Git Flow and policies
+/.github/BRANCH_POLICY.md @dmitryanchikov
+/.github/RELEASE_PROCESS.md @dmitryanchikov
+/.github/BRANCH_PROTECTION.md @dmitryanchikov
+/.github/pull_request_template.md @dmitryanchikov
+
+# Security-sensitive files
+/.github/workflows/ci.yml @dmitryanchikov
+/scripts/ @dmitryanchikov
+
+# Monitoring and observability
+/monitoring/ @dmitryanchikov
+
+# Examples and tutorials
+/examples/en/ @dmitryanchikov
+/examples/ru/ @dmitryanchikov
+/examples/integration/ @dmitryanchikov 

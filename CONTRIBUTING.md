@@ -1,6 +1,6 @@
 # Contributing to MCP Optimizer
 
-Thank you for your interest in contributing to MCP Optimizer! This document provides guidelines and information for contributors.
+Thank you for your interest in contributing to MCP Optimizer! This document provides comprehensive guidelines for contributors, including our Git Flow policy, development setup, and contribution process.
 
 ## 🤝 How to Contribute
 
@@ -19,6 +19,78 @@ Thank you for your interest in contributing to MCP Optimizer! This document prov
 - Describe the feature and its use case
 - Explain why it would be valuable to the project
 - Consider providing a basic implementation outline
+
+## 🌳 Git Flow and Branch Policy
+
+### Branch Structure
+
+#### Main Branches
+
+**`main`**
+- **Purpose**: Production-ready code
+- **Protection**: Fully protected, no direct pushes
+- **Merges from**: `release/*` branches only
+- **Triggers**: Production deployments, GitHub releases
+- **Stability**: Must always be stable and deployable
+
+**`develop`**
+- **Purpose**: Integration branch for features
+- **Protection**: Protected, no direct pushes except hotfixes
+- **Merges from**: `feature/*`, `hotfix/*` branches
+- **Merges to**: `release/*` branches
+- **Stability**: Should be stable, but may contain experimental features
+
+#### Supporting Branches
+
+**`feature/*`**
+- **Purpose**: Development of new features
+- **Naming**: `feature/issue-number-short-description` or `feature/short-description`
+- **Branches from**: `develop`
+- **Merges to**: `develop` via Pull Request
+- **Lifetime**: Temporary, deleted after merge
+- **Examples**: 
+  - `feature/123-add-knapsack-solver`
+  - `feature/improve-error-handling`
+
+**`release/*`**
+- **Purpose**: Prepare new production releases
+- **Naming**: `release/v{major}.{minor}.{patch}`
+- **Branches from**: `develop`
+- **Merges to**: `main` and `develop`
+- **Lifetime**: Temporary, deleted after release
+- **Examples**: 
+  - `release/v1.2.0`
+  - `release/v2.0.0-beta.1`
+
+**`hotfix/*`**
+- **Purpose**: Critical fixes for production issues
+- **Naming**: `hotfix/v{major}.{minor}.{patch}` or `hotfix/issue-description`
+- **Branches from**: `main`
+- **Merges to**: `main` and `develop`
+- **Lifetime**: Temporary, deleted after merge
+- **Examples**: 
+  - `hotfix/v1.1.1`
+  - `hotfix/critical-security-fix`
+
+### Branch Protection Rules
+
+#### `main` Branch Protection
+- **Reviews**: 2 required reviewers
+- **Status checks**: All tests, security, build must pass
+- **Restrictions**: No direct pushes, no force pushes, no deletions
+- **History**: Linear history required
+- **Code owners**: Review required
+
+#### `develop` Branch Protection
+- **Reviews**: 1 required reviewer
+- **Status checks**: Tests and security must pass
+- **Restrictions**: No force pushes, no deletions
+- **Bypass**: Administrators can bypass for hotfixes
+
+#### `release/*` Branch Protection
+- **Reviews**: 1 required reviewer, code owners required
+- **Status checks**: All tests, security, build must pass
+- **Cleanup**: Deletions allowed after release
 
 ## 🛠️ Development Setup
 
@@ -40,34 +112,95 @@ uv sync --extra dev
 uv run pre-commit install
 ```
 
-### Development Workflow
+## 🔄 Development Workflows
+
+### Feature Development
 ```bash
-# Create a new branch for your feature/fix
+# 1. Create feature branch from develop
+git checkout develop
+git pull origin develop
 git checkout -b feature/your-feature-name
 
-# Make your changes
+# 2. Make your changes
 # ... edit files ...
 
-# Run tests
+# 3. Run tests and quality checks
 uv run pytest tests/ -v
-
-# Run linting and formatting
 uv run ruff check src/
 uv run ruff format src/
 uv run mypy src/
-
-# Run comprehensive tests
 uv run python comprehensive_test.py
 
-# Commit your changes
+# 4. Commit your changes (use conventional commits)
 git add .
 git commit -m "feat: add your feature description"
 
-# Push to your fork
+# 5. Push to your fork
 git push origin feature/your-feature-name
 
-# Create a Pull Request
+# 6. Create Pull Request to develop branch
+# Use the PR template and follow the checklist
 ```
+
+### Release Process (for maintainers)
+```bash
+# 1. Create release branch from develop
+git checkout develop
+git pull origin develop
+uv run python scripts/release.py --type minor
+
+# 2. Create PR to main
+gh pr create --base main --head release/v1.2.0 --title "Release v1.2.0"
+
+# 3. Merge PR - automatic finalization happens!
+# ✅ Tag creation, PyPI publishing, Docker images, GitHub release
+```
+
+### Hotfix Process (for maintainers)
+```bash
+# 1. Create hotfix branch from main
+git checkout main
+git pull origin main
+uv run python scripts/release.py --hotfix --type patch
+
+# 2. Fix the issue
+git add .
+git commit -m "fix: resolve critical security vulnerability"
+git push origin hotfix/v1.1.1
+
+# 3. Create PRs to both main and develop
+gh pr create --base main --head hotfix/v1.1.1 --title "Hotfix v1.1.1"
+gh pr create --base develop --head hotfix/v1.1.1 --title "Hotfix v1.1.1 - Merge to develop"
+```
+
+## 📋 Pull Request Guidelines
+
+### Requirements
+- **Target Branch**: 
+  - Features → `develop`
+  - Releases → `main`
+  - Hotfixes → `main` and `develop`
+- **Title**: Follow conventional commits format
+- **Description**: Use PR template
+- **Tests**: All tests must pass
+- **Review**: Required number of approvals
+- **Conflicts**: Must be resolved before merge
+
+### PR Title Format
+```
+type(scope): description
+
+Examples:
+feat(knapsack): add multi-dimensional knapsack solver
+fix(assignment): handle empty worker list edge case
+docs(readme): update installation instructions
+chore(deps): update dependencies to latest versions
+```
+
+### Merge Strategy
+- **Features**: Squash and merge (clean history)
+- **Releases**: Create merge commit (preserve release history)
+- **Hotfixes**: Create merge commit (preserve fix history)
 
 ## 📝 Code Standards
 
@@ -190,159 +323,92 @@ class TestExampleTool:
 ## 🔧 Adding New Optimization Tools
 
 ### Tool Structure
-When adding a new optimization tool, follow this structure:
-
 ```python
-"""New optimization tool for MCP server."""
-
-import logging
+# src/mcp_optimizer/tools/new_tool.py
 from typing import Any, Dict, List
-from fastmcp import FastMCP
-from ..schemas.base import OptimizationResult
-
-logger = logging.getLogger(__name__)
+from mcp_optimizer.schemas.base import OptimizationResult
+from mcp_optimizer.utils.validation import validate_input
 
 
 def solve_new_problem(
-    input_data: Dict[str, Any],
-    solver: str = "default",
-) -> Dict[str, Any]:
-    """Solve the new optimization problem.
+    problem_data: Dict[str, Any]
+) -> OptimizationResult:
+    """Solve a new type of optimization problem.
     
     Args:
-        input_data: Problem specification
-        solver: Solver to use
+        problem_data: Problem specification
         
     Returns:
         Optimization result
     """
-    # Implementation here
-    pass
-
-
-def register_new_tools(mcp: FastMCP[Any]) -> None:
-    """Register new optimization tools with MCP server."""
+    # Validate input
+    validate_input(problem_data)
     
-    @mcp.tool()
-    def solve_new_problem_tool(
-        param1: str,
-        param2: List[Dict[str, Any]],
-        solver: str = "default",
-    ) -> Dict[str, Any]:
-        """Tool description for MCP.
-        
-        Args:
-            param1: Description of parameter 1
-            param2: Description of parameter 2
-            solver: Solver to use
-            
-        Returns:
-            Optimization result
-        """
-        return solve_new_problem({"param1": param1, "param2": param2}, solver)
+    # Solve problem
+    # ... implementation ...
     
-    logger.info("Registered new optimization tools")
+    return OptimizationResult(
+        status="optimal",
+        objective_value=42.0,
+        variables={"x": 1.0},
+        solve_time=0.01
+    )
 ```
 
 ### Integration Steps
-1. Create the tool module in `src/mcp_optimizer/tools/`
-2. Add tests in `tests/test_tools/`
-3. Register the tool in `src/mcp_optimizer/mcp_server.py`
-4. Add examples to README.md
-5. Update comprehensive_test.py if needed
+1. Create tool module in `src/mcp_optimizer/tools/`
+2. Add validation schema in `src/mcp_optimizer/schemas/`
+3. Write comprehensive tests in `tests/test_tools/`
+4. Add MCP tool registration in `src/mcp_optimizer/mcp_server.py`
+5. Update documentation and examples
 
-## 🚀 Release Process
+## 🚀 CI/CD Integration
 
-### Version Numbering
-- Follow [Semantic Versioning](https://semver.org/)
-- Format: MAJOR.MINOR.PATCH
-- Update version in `pyproject.toml`
+### Trigger Rules
+- **Tests**: Run on all branches and PRs
+- **Security Scans**: Run on all branches and PRs
+- **Docker Build**: Run on `main`, `develop`, and `release/*`
+- **PyPI Release**: Run only on version tags from `main`
+- **GitHub Release**: Run only on version tags from `main`
 
-### Release Checklist
-- [ ] All tests pass
-- [ ] Documentation updated
-- [ ] Version bumped
-- [ ] Changelog updated
-- [ ] Performance benchmarks run
-- [ ] Security review completed
+### Branch-Specific Behaviors
+- **`main`**: Full CI/CD pipeline, production deployments
+- **`develop`**: Full CI/CD pipeline, development deployments
+- **`feature/*`**: Tests and security scans only
+- **`release/*`**: Full CI/CD pipeline, release candidate builds
+- **`hotfix/*`**: Full CI/CD pipeline, hotfix builds
 
-## 📋 Pull Request Guidelines
+## 🏷️ Tagging Strategy
 
-### PR Requirements
-- Clear, descriptive title
-- Detailed description of changes
-- Link to related issues
-- All tests passing
-- Code review approval
+### Version Tags
+- Format: `v{major}.{minor}.{patch}`
+- Created on `main` branch only
+- Triggers production release
+- Examples: `v1.0.0`, `v1.2.3`, `v2.0.0-beta.1`
 
-### PR Template
-```markdown
-## Description
-Brief description of changes
+### Pre-release Tags
+- Format: `v{major}.{minor}.{patch}-{pre-release}`
+- Examples: `v1.2.0-alpha.1`, `v1.2.0-beta.2`, `v1.2.0-rc.1`
 
-## Type of Change
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Breaking change
-- [ ] Documentation update
-
-## Testing
-- [ ] Unit tests added/updated
-- [ ] Integration tests pass
-- [ ] Manual testing completed
-
-## Checklist
-- [ ] Code follows style guidelines
-- [ ] Self-review completed
-- [ ] Documentation updated
-- [ ] Tests added for new functionality
-```
-
-## 🏷️ Commit Message Format
-
-Use conventional commits format:
-```
-type(scope): description
-
-[optional body]
-
-[optional footer]
-```
-
-### Types
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation changes
-- `style`: Code style changes
-- `refactor`: Code refactoring
-- `test`: Test additions/changes
-- `chore`: Maintenance tasks
-
-### Examples
-```
-feat(knapsack): add support for multi-dimensional constraints
-fix(assignment): handle edge case with empty worker list
-docs(readme): update installation instructions
-test(linear): add tests for integer programming
-```
-
-## 🆘 Getting Help
+## 📞 Getting Help
 
 ### Communication Channels
-- GitHub Issues for bugs and feature requests
-- GitHub Discussions for questions and ideas
-- Email: dev@mcp-optimizer.com
+- **Issues**: [GitHub Issues](https://github.com/dmitryanchikov/mcp-optimizer/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/dmitryanchikov/mcp-optimizer/discussions)
+- **Email**: support@mcp-optimizer.com
 
-### Resources
-- [Project Documentation](docs/)
-- [OR-Tools Documentation](https://developers.google.com/optimization)
-- [PuLP Documentation](https://coin-or.github.io/pulp/)
-- [FastMCP Documentation](https://github.com/jlowin/fastmcp)
+### Before Asking for Help
+1. Check existing documentation
+2. Search closed issues and discussions
+3. Try the troubleshooting steps
+4. Provide minimal reproducible example
 
-## 📄 License
+## 🙏 Recognition
 
-By contributing to MCP Optimizer, you agree that your contributions will be licensed under the MIT License.
-
----
+Contributors are recognized in:
+- GitHub contributors page
+- Release notes
+- Project README
+- Annual contributor highlights
 
 Thank you for contributing to MCP Optimizer! 🚀 
