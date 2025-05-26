@@ -1,6 +1,6 @@
 [project]
 name = "mcp-optimizer"
-version = "0.2.0"
+version = "0.3.0"
 description = "MCP server for mathematical optimization problems using PuLP and OR-Tools"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -84,7 +84,7 @@ line-ending = "auto"
 docstring-code-format = false
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 check_untyped_defs = true
 disallow_any_generics = true
 disallow_incomplete_defs = true

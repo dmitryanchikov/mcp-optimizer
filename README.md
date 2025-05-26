@@ -9,33 +9,106 @@
 
 ## 🚀 Quick Start
 
-### Option 1: Using uvx (Recommended)
-```bash
-# Run directly with uvx (no installation needed)
-uvx mcp-optimizer
+### Integration with LLM Clients
 
-# Or run specific commands
-uvx mcp-optimizer --help
+#### Claude Desktop Integration
+
+**Option 1: Using uvx (Recommended)**
+1. Install Claude Desktop from [claude.ai](https://claude.ai/download)
+2. Open Claude Desktop → Settings → Developer → Edit Config
+3. Add to your `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "mcp-optimizer": {
+      "command": "uvx",
+      "args": ["mcp-optimizer"]
+    }
+  }
+}
+```
+4. Restart Claude Desktop and look for the 🔨 tools icon
+
+**Option 2: Using pip**
+```bash
+pip install mcp-optimizer
+```
+Then add to your Claude Desktop config:
+```json
+{
+  "mcpServers": {
+    "mcp-optimizer": {
+      "command": "mcp-optimizer"
+    }
+  }
+}
 ```
 
-### Option 2: Using pip
+**Option 3: Using Docker**
+
+*Method A: Docker with stdio (Recommended)*
 ```bash
-# Install from PyPI
-pip install mcp-optimizer
+docker pull ghcr.io/dmitryanchikov/mcp-optimizer:latest
+```
+Then add to your Claude Desktop config:
+```json
+{
+  "mcpServers": {
+    "mcp-optimizer": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "ghcr.io/dmitryanchikov/mcp-optimizer:latest",
+        "python", "main.py"
+      ]
+    }
+  }
+}
+```
+
+*Method B: Docker as HTTP server (for advanced users)*
+```bash
+docker run -d -p 8000:8000 ghcr.io/dmitryanchikov/mcp-optimizer:latest
+```
+Then use HTTP client to connect to `http://localhost:8000` (requires additional MCP HTTP client setup)
+
+#### Cursor Integration
+
+1. Install the MCP extension in Cursor
+2. Add mcp-optimizer to your workspace settings:
+```json
+{
+  "mcp.servers": {
+    "mcp-optimizer": {
+      "command": "uvx",
+      "args": ["mcp-optimizer"]
+    }
+  }
+}
+```
+
+#### Other LLM Clients
+
+For other MCP-compatible clients (Continue, Cody, etc.), use similar configuration patterns with the appropriate command for your installation method.
+
+### Advanced Installation Options
+
+#### Local Development
+```bash
+# Clone the repository
+git clone https://github.com/dmitryanchikov/mcp-optimizer.git
+cd mcp-optimizer
+
+# Install dependencies with uv
+uv sync --extra dev
 
 # Run the server
-mcp-optimizer
-
-# Or run with Python module
-python -m mcp_optimizer
+uv run python main.py
 ```
 
-### Option 3: Using Docker
+#### Docker with Custom Configuration
 ```bash
-# Pull and run the optimized Docker image
-docker run -p 8000:8000 ghcr.io/your-repo/mcp-optimizer:latest
-
-# Or build locally with optimization
+# Build locally with optimization
 git clone https://github.com/dmitryanchikov/mcp-optimizer.git
 cd mcp-optimizer
 docker build -t mcp-optimizer:optimized .
@@ -48,25 +121,19 @@ docker images mcp-optimizer:optimized
 ./scripts/test_docker_optimization.sh
 ```
 
-#### 🐳 Docker Optimization Results
-- **Original image**: 1.03GB
-- **Optimized image**: 398MB  
-- **Size reduction**: 61% (632MB saved!)
-- **Features**: Multi-stage build, uv caching, Python optimization, security hardening
-
-See [Docker Optimization Guide](docs/DOCKER_OPTIMIZATION.md) for details.
-
-### Option 4: Local Development
+#### Standalone Server Commands
 ```bash
-# Clone the repository
-git clone https://github.com/dmitryanchikov/mcp-optimizer.git
-cd mcp-optimizer
+# Run directly with uvx (no installation needed)
+uvx mcp-optimizer
 
-# Install dependencies with uv
-uv sync --extra dev
+# Or run specific commands
+uvx mcp-optimizer --help
 
-# Run the server
-uv run python main.py
+# With pip installation
+mcp-optimizer
+
+# Or run with Python module (use main.py for stdio mode)
+python main.py
 ```
 
 ## 🎯 Features
@@ -329,30 +396,52 @@ Each example includes:
 
 3. **OR-Tools Integration** - Confirmed full functionality of all OR-Tools components
 
-## 🚀 Release Process
+## 🚀 Fully Automated Release Process
 
-### Automated Release
-Use the release script for automated release preparation:
+### New Simplified Git Flow (3 steps!)
+The project uses a fully automated release process:
 
+#### 1. Create Release Branch
 ```bash
-# Prepare a new release (dry run first)
-uv run python scripts/release.py 0.2.0 --dry-run
+# For minor release (auto-increment)
+uv run python scripts/release.py --type minor
 
-# Prepare actual release
+# For specific version
 uv run python scripts/release.py 0.2.0
 
-# Push to trigger CI/CD
-git push origin main --tags
+# For hotfix
+uv run python scripts/release.py --hotfix --type patch
+
+# Preview changes
+uv run python scripts/release.py --type minor --dry-run
 ```
 
-### Manual Release Steps
-1. **Update version** in `pyproject.toml`
-2. **Update CHANGELOG.md** with release notes
-3. **Run tests**: `uv run pytest tests/ -v`
-4. **Build package**: `uv build`
-5. **Create git tag**: `git tag -a v0.2.0 -m "Release 0.2.0"`
-6. **Push tag**: `git push origin main --tags`
-7. **Publish to PyPI**: `uv publish`
+#### 2. Create PR to main
+```bash
+# Create PR: release/v0.3.0 → main
+gh pr create --base main --head release/v0.3.0 --title "Release v0.3.0"
+```
+
+#### 3. Merge PR - DONE! 🎉
+After PR merge, automatically happens:
+- ✅ Create tag v0.3.0
+- ✅ Publish to PyPI
+- ✅ Publish Docker images  
+- ✅ Create GitHub Release
+- ✅ Merge main back to develop
+- ✅ Cleanup release branch
+
+**NO NEED** to run `finalize_release.py` manually anymore!
+
+> 🔒 **Secure Detection**: Uses hybrid approach combining GitHub branch protection with automated release detection. See [Release Process](.github/RELEASE_PROCESS.md) for details.
+
+### Automated Release Pipeline
+The CI/CD pipeline automatically handles:
+- ✅ **Release Candidates**: Built from `release/*` branches
+- ✅ **Production Releases**: Triggered by version tags on `main`
+- ✅ **PyPI Publishing**: Automatic on tag creation
+- ✅ **Docker Images**: Multi-architecture builds
+- ✅ **GitHub Releases**: With artifacts and release notes
 
 ### CI/CD Pipeline
 The GitHub Actions workflow automatically:
@@ -433,11 +522,28 @@ docker run --rm mcp-optimizer:latest python -c "from mcp_optimizer.mcp_server im
 
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
+### Git Flow Policy
+This project follows a standard Git Flow workflow:
+- **Feature branches** → `develop` branch
+- **Release branches** → `main` branch  
+- **Hotfix branches** → `main` and `develop` branches
+
+📚 **Documentation**:
+- [Contributing Guide](CONTRIBUTING.md) - Complete development workflow and Git Flow policy
+- [Release Process](.github/RELEASE_PROCESS.md) - How releases are created and automated
+- [Repository Setup](.github/REPOSITORY_SETUP.md) - Complete setup guide including branch protection and security configuration
+
 ### Development Setup
 ```bash
 # Clone and setup
 git clone https://github.com/dmitryanchikov/mcp-optimizer.git
 cd mcp-optimizer
+
+# Create feature branch from develop
+git checkout develop
+git checkout -b feature/your-feature-name
+
+# Install dependencies
 uv sync --extra dev
 
 # Run tests
@@ -446,6 +552,8 @@ uv run pytest tests/ -v
 # Run linting
 uv run ruff check src/
 uv run mypy src/
+
+# Create PR to develop branch (not main!)
 ```
 
 ## 📄 License

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Docker Optimization Test Script
-# Тестирует оптимизированный Docker образ MCP Optimizer
+# Tests the optimized MCP Optimizer Docker image
 
 set -e
 
