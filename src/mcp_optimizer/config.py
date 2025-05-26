@@ -53,7 +53,7 @@ class Settings(BaseSettings):
         le=65535,
     )
     mcp_host: str = Field(
-        default="0.0.0.0",
+        default="127.0.0.1",  # nosec B104 - localhost only by default for security
         description="Host for SSE transport",
     )
 
