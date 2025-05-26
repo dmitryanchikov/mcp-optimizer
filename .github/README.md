@@ -12,6 +12,7 @@ This directory contains GitHub-specific configuration files and documentation fo
 - **`REPOSITORY_SETUP.md`** - Complete repository setup guide including Git Flow, branch protection, and security configuration
 - **`RELEASE_PROCESS.md`** - Detailed release process from planning to publication
 
+
 ### Templates
 - **`pull_request_template.md`** - Comprehensive PR template with checklists and guidelines
 
