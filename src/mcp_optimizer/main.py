@@ -38,7 +38,7 @@ async def run_stdio_server() -> None:
     mcp_server = create_mcp_server()
 
     # Run the server with stdio transport
-    await mcp_server.run(
+    await mcp_server.run(  # type: ignore
         transport="stdio",
         capture_exceptions=not settings.debug,
     )

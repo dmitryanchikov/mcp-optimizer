@@ -5,7 +5,7 @@ Thank you for your interest in contributing to MCP Optimizer! This document prov
 ## 🤝 How to Contribute
 
 ### Reporting Issues
-- Use the [GitHub Issues](https://github.com/your-repo/mcp-optimizer/issues) page
+- Use the [GitHub Issues](https://github.com/dmitryanchikov/mcp-optimizer/issues) page
 - Search existing issues before creating a new one
 - Provide detailed information including:
   - Python version

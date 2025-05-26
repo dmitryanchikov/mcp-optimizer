@@ -1,7 +1,5 @@
 """Tests for OR-Tools solver."""
 
-import pytest
-
 from mcp_optimizer.schemas.base import OptimizationStatus
 from mcp_optimizer.solvers.ortools_solver import ORToolsSolver
 
@@ -30,7 +28,9 @@ class TestORToolsSolver:
         assert result["execution_time"] > 0
 
         # Check that each worker is assigned exactly one task
-        assigned_workers = {assignment["worker"] for assignment in result["assignments"]}
+        assigned_workers = {
+            assignment["worker"] for assignment in result["assignments"]
+        }
         assert assigned_workers == set(workers)
 
         # Check that each task is assigned to exactly one worker
@@ -47,9 +47,7 @@ class TestORToolsSolver:
         ]
 
         solver = ORToolsSolver()
-        result = solver.solve_assignment_problem(
-            workers, tasks, costs, maximize=True
-        )
+        result = solver.solve_assignment_problem(workers, tasks, costs, maximize=True)
 
         assert result["status"] == OptimizationStatus.OPTIMAL.value
         assert result["total_cost"] is not None
@@ -85,7 +83,10 @@ class TestORToolsSolver:
 
         solver = ORToolsSolver()
         result = solver.solve_assignment_problem(
-            workers, tasks, costs, min_tasks_per_worker=3  # Impossible constraint
+            workers,
+            tasks,
+            costs,
+            min_tasks_per_worker=3,  # Impossible constraint
         )
 
         assert result["status"] == OptimizationStatus.INFEASIBLE.value
@@ -156,4 +157,4 @@ class TestORToolsSolver:
         result = solver.solve_transportation_problem(suppliers, consumers, costs)
 
         assert result["status"] == OptimizationStatus.ERROR.value
-        assert result["error_message"] is not None 
+        assert result["error_message"] is not None

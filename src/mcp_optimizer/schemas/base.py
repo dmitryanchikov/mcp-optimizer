@@ -169,12 +169,10 @@ class OptimizationRequest(BaseModel):
 
 class OptimizationResult(BaseOptimizationResult):
     """Extended optimization result with variables."""
-    
+
     variables: dict[str, Any] | None = Field(
-        default=None,
-        description="Solution variables and additional result data"
+        default=None, description="Solution variables and additional result data"
     )
     solver_info: dict[str, Any] | None = Field(
-        default=None,
-        description="Information about the solver used"
+        default=None, description="Information about the solver used"
     )

@@ -277,6 +277,6 @@ print(f"Optimal value: {result.objective_value}")
 ## Support
 
 - 📧 Email: support@mcp-optimizer.com
-- 🐛 Issues: [GitHub Issues](https://github.com/your-repo/mcp-optimizer/issues)
+- 🐛 Issues: [GitHub Issues](https://github.com/dmitryanchikov/mcp-optimizer/issues)
 - 📖 Documentation: [Full Documentation](https://mcp-optimizer.readthedocs.io)
 - 💬 Discord: [Community Server](https://discord.gg/mcp-optimizer) 

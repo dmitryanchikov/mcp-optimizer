@@ -4,12 +4,11 @@ import logging
 import time
 from typing import Any
 
-from ortools.graph.python import linear_sum_assignment  # type: ignore
-from ortools.linear_solver import pywraplp  # type: ignore
+from ortools.graph.python import linear_sum_assignment
+from ortools.linear_solver import pywraplp
 
 from mcp_optimizer.config import settings
 from mcp_optimizer.schemas.base import (
-    BaseOptimizationResult,
     OptimizationStatus,
     SolverInfo,
 )
@@ -26,7 +25,7 @@ logger = logging.getLogger(__name__)
 class ORToolsSolver:
     """Solver for various optimization problems using OR-Tools."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize OR-Tools solver."""
         self.solver_name = "OR-Tools"
 
@@ -83,7 +82,9 @@ class ORToolsSolver:
                 for worker_idx in range(len(workers)):
                     for task_idx in range(len(tasks)):
                         assignment.add_arc_with_cost(
-                            worker_idx, task_idx, int(costs[worker_idx][task_idx] * 1000)
+                            worker_idx,
+                            task_idx,
+                            int(costs[worker_idx][task_idx] * 1000),
                         )
 
                 # Solve
@@ -232,9 +233,7 @@ class ORToolsSolver:
                 for i in range(len(workers)):
                     for j in range(len(tasks)):
                         if x[i, j].solution_value() > 0.5:
-                            original_cost = (
-                                -costs[i][j] if maximize else costs[i][j]
-                            )
+                            original_cost = -costs[i][j] if maximize else costs[i][j]
                             assignments.append(
                                 Assignment(
                                     worker=workers[i],
@@ -332,7 +331,9 @@ class ORToolsSolver:
             for i in range(len(suppliers)):
                 for j in range(len(consumers)):
                     x[i, j] = solver.NumVar(
-                        0, solver.infinity(), f"x_{suppliers[i]['name']}_{consumers[j]['name']}"
+                        0,
+                        solver.infinity(),
+                        f"x_{suppliers[i]['name']}_{consumers[j]['name']}",
                     )
 
             # Objective: minimize total transportation cost
@@ -427,4 +428,4 @@ class ORToolsSolver:
                 flows=[],
                 execution_time=execution_time,
                 error_message=f"Solver error: {str(e)}",
-            ).model_dump() 
+            ).model_dump()

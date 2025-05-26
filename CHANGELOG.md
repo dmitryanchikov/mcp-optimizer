@@ -141,5 +141,5 @@ First stable release with core optimization capabilities and MCP server integrat
 
 For questions, issues, or contributions:
 - 📧 Email: support@mcp-optimizer.com
-- 🐛 Issues: [GitHub Issues](https://github.com/your-repo/mcp-optimizer/issues)
+- 🐛 Issues: [GitHub Issues](https://github.com/dmitryanchikov/mcp-optimizer/issues)
 - 📖 Documentation: [docs/](docs/) 

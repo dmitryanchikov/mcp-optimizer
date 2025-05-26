@@ -2,8 +2,8 @@
 
 🚀 **Mathematical Optimization MCP Server** with PuLP and OR-Tools support
 
-[![Tests](https://img.shields.io/badge/tests-66%20passed-brightgreen)](https://github.com/your-repo/mcp-optimizer)
-[![Coverage](https://img.shields.io/badge/coverage-48%25-yellow)](https://github.com/your-repo/mcp-optimizer)
+[![Tests](https://img.shields.io/badge/tests-66%20passed-brightgreen)](https://github.com/dmitryanchikov/mcp-optimizer)
+[![Coverage](https://img.shields.io/badge/coverage-48%25-yellow)](https://github.com/dmitryanchikov/mcp-optimizer)
 [![Python](https://img.shields.io/badge/python-3.12%2B-blue)](https://python.org)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
@@ -461,7 +461,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 - 📧 Email: support@mcp-optimizer.com
-- 🐛 Issues: [GitHub Issues](https://github.com/your-repo/mcp-optimizer/issues)
+- 🐛 Issues: [GitHub Issues](https://github.com/dmitryanchikov/mcp-optimizer/issues)
 - 📖 Documentation: [docs/](docs/)
 
 ---

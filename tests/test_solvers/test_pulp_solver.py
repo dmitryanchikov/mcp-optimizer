@@ -1,6 +1,5 @@
 """Tests for PuLP solver."""
 
-
 from mcp_optimizer.schemas.base import (
     Constraint,
     ConstraintOperator,

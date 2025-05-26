@@ -7,14 +7,14 @@ from fastmcp import FastMCP
 
 from mcp_optimizer.config import settings
 from mcp_optimizer.tools.assignment import register_assignment_tools
+from mcp_optimizer.tools.financial import register_financial_tools
+from mcp_optimizer.tools.integer_programming import register_integer_programming_tools
 from mcp_optimizer.tools.knapsack import register_knapsack_tools
 from mcp_optimizer.tools.linear_programming import register_linear_programming_tools
-from mcp_optimizer.tools.validation import register_validation_tools
+from mcp_optimizer.tools.production import register_production_tools
 from mcp_optimizer.tools.routing import register_routing_tools
 from mcp_optimizer.tools.scheduling import register_scheduling_tools
-from mcp_optimizer.tools.integer_programming import register_integer_programming_tools
-from mcp_optimizer.tools.financial import register_financial_tools
-from mcp_optimizer.tools.production import register_production_tools
+from mcp_optimizer.tools.validation import register_validation_tools
 
 logger = logging.getLogger(__name__)
 
@@ -77,13 +77,13 @@ def create_mcp_server() -> FastMCP[Any]:
         """
         try:
             # Test basic imports
-            import ortools  # type: ignore
-            import pulp  # type: ignore
+            import ortools
+            import pulp
 
             return {
                 "status": "healthy",
-                "pulp_version": pulp.__version__,
-                "ortools_version": ortools.__version__,
+                "pulp_version": getattr(pulp, "__version__", "unknown"),
+                "ortools_version": getattr(ortools, "__version__", "unknown"),
                 "message": "All optimization libraries are available",
             }
         except ImportError as e:

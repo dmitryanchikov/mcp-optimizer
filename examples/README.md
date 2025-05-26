@@ -153,5 +153,5 @@ MCP Optimizer supports 9 categories of optimization problems:
 
 For questions about these examples or MCP Optimizer usage:
 - 📧 Email: support@mcp-optimizer.com
-- 🐛 Issues: [GitHub Issues](https://github.com/your-repo/mcp-optimizer/issues)
+- 🐛 Issues: [GitHub Issues](https://github.com/dmitryanchikov/mcp-optimizer/issues)
 - 📖 Documentation: [Main README](../README.md) 

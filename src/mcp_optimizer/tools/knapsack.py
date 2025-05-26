@@ -1,14 +1,16 @@
 """Knapsack problem tools for MCP server."""
 
 import logging
+import time
 from typing import Any
 
 from fastmcp import FastMCP
-from ortools.algorithms.python import knapsack_solver  # type: ignore
+from ortools.algorithms.python import knapsack_solver
 
 from mcp_optimizer.config import settings
 
 logger = logging.getLogger(__name__)
+
 
 # Define function that can be imported directly
 def solve_knapsack_problem(
@@ -70,7 +72,6 @@ def solve_knapsack_problem(
                     "error_message": f"Item {i} value and weight must be non-negative",
                 }
 
-        import time
         start_time = time.time()
 
         # Choose appropriate solver based on constraints
@@ -78,13 +79,12 @@ def solve_knapsack_problem(
             # Use multidimensional solver for volume constraints
             solver = knapsack_solver.KnapsackSolver(
                 knapsack_solver.KNAPSACK_MULTIDIMENSION_BRANCH_AND_BOUND_SOLVER,
-                "KnapsackSolver"
+                "KnapsackSolver",
             )
         else:
             # Use dynamic programming for single dimension
             solver = knapsack_solver.KnapsackSolver(
-                knapsack_solver.KNAPSACK_DYNAMIC_PROGRAMMING_SOLVER,
-                "KnapsackSolver"
+                knapsack_solver.KNAPSACK_DYNAMIC_PROGRAMMING_SOLVER, "KnapsackSolver"
             )
 
         # Prepare data
@@ -142,13 +142,15 @@ def solve_knapsack_problem(
             # Extract solution
             selected_items = []
             total_value = 0.0
-            item_counts = {}
+            item_counts: dict[str, int] = {}
 
             for i in range(len(values)):
                 if solver.best_solution_contains(i):
                     item_name = item_names[i]
-                    original_item = next(item for item in items if item["name"] == item_name)
-                    
+                    original_item = next(
+                        item for item in items if item["name"] == item_name
+                    )
+
                     if item_name in item_counts:
                         item_counts[item_name] += 1
                     else:
@@ -156,17 +158,23 @@ def solve_knapsack_problem(
 
             # Create selected items list
             for item_name, count in item_counts.items():
-                original_item = next(item for item in items if item["name"] == item_name)
-                selected_items.append({
-                    "name": item_name,
-                    "quantity": count,
-                    "value": original_item["value"],
-                    "weight": original_item["weight"],
-                    "volume": original_item.get("volume"),
-                    "total_value": original_item["value"] * count,
-                    "total_weight": original_item["weight"] * count,
-                    "total_volume": original_item.get("volume", 0) * count if original_item.get("volume") else None,
-                })
+                original_item = next(
+                    item for item in items if item["name"] == item_name
+                )
+                selected_items.append(
+                    {
+                        "name": item_name,
+                        "quantity": count,
+                        "value": original_item["value"],
+                        "weight": original_item["weight"],
+                        "volume": original_item.get("volume"),
+                        "total_value": original_item["value"] * count,
+                        "total_weight": original_item["weight"] * count,
+                        "total_volume": original_item.get("volume", 0) * count
+                        if original_item.get("volume")
+                        else None,
+                    }
+                )
                 total_value += original_item["value"] * count
 
             result = {
@@ -176,11 +184,13 @@ def solve_knapsack_problem(
                 "execution_time": execution_time,
                 "solver_info": {
                     "solver_name": "OR-Tools KnapsackSolver",
-                    "algorithm": "Dynamic Programming" if not volume_capacity else "Branch and Bound",
+                    "algorithm": "Dynamic Programming"
+                    if not volume_capacity
+                    else "Branch and Bound",
                     "items_count": len(items),
                     "capacity": capacity,
                     "volume_capacity": volume_capacity,
-                }
+                },
             }
         else:
             result = {
@@ -190,11 +200,13 @@ def solve_knapsack_problem(
                 "execution_time": execution_time,
                 "solver_info": {
                     "solver_name": "OR-Tools KnapsackSolver",
-                    "algorithm": "Dynamic Programming" if not volume_capacity else "Branch and Bound",
+                    "algorithm": "Dynamic Programming"
+                    if not volume_capacity
+                    else "Branch and Bound",
                     "items_count": len(items),
                     "capacity": capacity,
                     "volume_capacity": volume_capacity,
-                }
+                },
             }
 
         logger.info(f"Knapsack problem solved with status: {result['status']}")
@@ -257,6 +269,8 @@ def register_knapsack_tools(mcp: FastMCP[Any]) -> None:
                 volume_capacity=5
             )
         """
-        return solve_knapsack_problem(items, capacity, volume_capacity, knapsack_type, max_items_per_type)
+        return solve_knapsack_problem(
+            items, capacity, volume_capacity, knapsack_type, max_items_per_type
+        )
 
-    logger.info("Registered knapsack tools") 
+    logger.info("Registered knapsack tools")

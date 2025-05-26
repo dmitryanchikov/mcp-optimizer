@@ -1,10 +1,10 @@
 """Tests for knapsack tools."""
 
 import pytest
-
-from mcp_optimizer.tools.knapsack import register_knapsack_tools
 from fastmcp import FastMCP
 from ortools.algorithms.python import knapsack_solver  # type: ignore
+
+from mcp_optimizer.tools.knapsack import register_knapsack_tools
 
 
 class TestKnapsackTools:
@@ -22,8 +22,7 @@ class TestKnapsackTools:
 
         # Create knapsack solver directly
         solver = knapsack_solver.KnapsackSolver(
-            knapsack_solver.KNAPSACK_DYNAMIC_PROGRAMMING_SOLVER,
-            "KnapsackSolver"
+            knapsack_solver.KNAPSACK_DYNAMIC_PROGRAMMING_SOLVER, "KnapsackSolver"
         )
 
         # Prepare data
@@ -50,19 +49,15 @@ class TestKnapsackTools:
 
     def test_solve_knapsack_problem_empty_items(self):
         """Test knapsack problem with empty items list."""
-        items = []
-        capacity = 10
-
         # This should return an error
         # We'll test this through the tool interface when we add tool tests
+        pass
 
     def test_solve_knapsack_problem_zero_capacity(self):
         """Test knapsack problem with zero capacity."""
-        items = [{"name": "Item1", "value": 10, "weight": 5}]
-        capacity = 0
-
         # This should return an error
         # We'll test this through the tool interface when we add tool tests
+        pass
 
     def test_solve_knapsack_problem_with_volume(self):
         """Test knapsack problem with volume constraints."""
@@ -77,7 +72,7 @@ class TestKnapsackTools:
         # Create knapsack solver for multidimensional problem
         solver = knapsack_solver.KnapsackSolver(
             knapsack_solver.KNAPSACK_MULTIDIMENSION_BRANCH_AND_BOUND_SOLVER,
-            "KnapsackSolver"
+            "KnapsackSolver",
         )
 
         # Prepare data with volume constraints
@@ -101,8 +96,7 @@ class TestKnapsackTools:
 
         # Create knapsack solver
         solver = knapsack_solver.KnapsackSolver(
-            knapsack_solver.KNAPSACK_DYNAMIC_PROGRAMMING_SOLVER,
-            "KnapsackSolver"
+            knapsack_solver.KNAPSACK_DYNAMIC_PROGRAMMING_SOLVER, "KnapsackSolver"
         )
 
         # Prepare data
@@ -123,8 +117,7 @@ class TestKnapsackTools:
 
         # Create knapsack solver
         solver = knapsack_solver.KnapsackSolver(
-            knapsack_solver.KNAPSACK_DYNAMIC_PROGRAMMING_SOLVER,
-            "KnapsackSolver"
+            knapsack_solver.KNAPSACK_DYNAMIC_PROGRAMMING_SOLVER, "KnapsackSolver"
         )
 
         # Prepare data
@@ -187,8 +180,7 @@ class TestKnapsackSolverTypes:
         capacity = 10
 
         solver = knapsack_solver.KnapsackSolver(
-            knapsack_solver.KNAPSACK_DYNAMIC_PROGRAMMING_SOLVER,
-            "DynamicProgramming"
+            knapsack_solver.KNAPSACK_DYNAMIC_PROGRAMMING_SOLVER, "DynamicProgramming"
         )
 
         values = [int(item["value"] * 1000) for item in items]
@@ -209,8 +201,7 @@ class TestKnapsackSolverTypes:
         capacity = 10
 
         solver = knapsack_solver.KnapsackSolver(
-            knapsack_solver.KNAPSACK_BRUTE_FORCE_SOLVER,
-            "BruteForce"
+            knapsack_solver.KNAPSACK_BRUTE_FORCE_SOLVER, "BruteForce"
         )
 
         values = [int(item["value"] * 1000) for item in items]
@@ -231,8 +222,7 @@ class TestKnapsackSolverTypes:
         capacity = 20
 
         solver = knapsack_solver.KnapsackSolver(
-            knapsack_solver.KNAPSACK_64ITEMS_SOLVER,
-            "64Items"
+            knapsack_solver.KNAPSACK_64ITEMS_SOLVER, "64Items"
         )
 
         values = [int(item["value"] * 1000) for item in items]
@@ -242,4 +232,4 @@ class TestKnapsackSolverTypes:
         solver.init(values, [weights], capacities)
         result = solver.solve()
 
-        assert result >= 0  # May be 0 if no solution found 
+        assert result >= 0  # May be 0 if no solution found

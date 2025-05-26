@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 
 def validate_linear_program(data: dict[str, Any]) -> ValidationResult:
     """Validate linear programming problem data."""
-    errors = []
-    warnings = []
-    suggestions = []
+    errors: list[str] = []
+    warnings: list[str] = []
+    suggestions: list[str] = []
 
     # Check required fields
     if "objective" not in data:
@@ -105,9 +105,9 @@ def validate_linear_program(data: dict[str, Any]) -> ValidationResult:
 
 def validate_assignment_problem(data: dict[str, Any]) -> ValidationResult:
     """Validate assignment problem data."""
-    errors = []
-    warnings = []
-    suggestions = []
+    errors: list[str] = []
+    warnings: list[str] = []
+    suggestions: list[str] = []
 
     # Check required fields
     required_fields = ["workers", "tasks", "costs"]
@@ -170,9 +170,9 @@ def validate_assignment_problem(data: dict[str, Any]) -> ValidationResult:
 
 def validate_knapsack_problem(data: dict[str, Any]) -> ValidationResult:
     """Validate knapsack problem data."""
-    errors = []
-    warnings = []
-    suggestions = []
+    errors: list[str] = []
+    warnings: list[str] = []
+    suggestions: list[str] = []
 
     # Check required fields
     required_fields = ["items", "capacity"]
@@ -190,25 +190,31 @@ def validate_knapsack_problem(data: dict[str, Any]) -> ValidationResult:
                 if not isinstance(item, dict):
                     errors.append(f"Item {i} must be a dictionary")
                     continue
-                
+
                 # Check required item fields
                 item_required_fields = ["name", "value", "weight"]
                 for field in item_required_fields:
                     if field not in item:
                         errors.append(f"Item {i} missing required field: {field}")
-                
+
                 # Check value and weight are non-negative
                 if "value" in item:
                     if not isinstance(item["value"], (int, float)) or item["value"] < 0:
                         errors.append(f"Item {i} value must be a non-negative number")
-                
+
                 if "weight" in item:
-                    if not isinstance(item["weight"], (int, float)) or item["weight"] < 0:
+                    if (
+                        not isinstance(item["weight"], (int, float))
+                        or item["weight"] < 0
+                    ):
                         errors.append(f"Item {i} weight must be a non-negative number")
-                
+
                 # Check optional volume field
                 if "volume" in item:
-                    if not isinstance(item["volume"], (int, float)) or item["volume"] < 0:
+                    if (
+                        not isinstance(item["volume"], (int, float))
+                        or item["volume"] < 0
+                    ):
                         errors.append(f"Item {i} volume must be a non-negative number")
 
     if "capacity" in data:
@@ -217,7 +223,10 @@ def validate_knapsack_problem(data: dict[str, Any]) -> ValidationResult:
 
     # Check optional volume capacity
     if "volume_capacity" in data:
-        if not isinstance(data["volume_capacity"], (int, float)) or data["volume_capacity"] <= 0:
+        if (
+            not isinstance(data["volume_capacity"], (int, float))
+            or data["volume_capacity"] <= 0
+        ):
             errors.append("Volume capacity must be a positive number")
 
     # Check knapsack type
@@ -230,20 +239,24 @@ def validate_knapsack_problem(data: dict[str, Any]) -> ValidationResult:
     if "items" in data and "capacity" in data and not errors:
         capacity = data["capacity"]
         feasible_items = []
-        
+
         for item in data["items"]:
             if isinstance(item, dict) and "weight" in item:
                 if item["weight"] <= capacity:
                     feasible_items.append(item)
-        
+
         if not feasible_items:
             warnings.append("No items fit within the capacity constraint")
         elif len(feasible_items) < len(data["items"]):
-            warnings.append(f"Only {len(feasible_items)} out of {len(data['items'])} items fit within capacity")
+            warnings.append(
+                f"Only {len(feasible_items)} out of {len(data['items'])} items fit within capacity"
+            )
 
     if not errors:
         suggestions.append("Consider using realistic item values and weights")
-        suggestions.append("For large problems, consider using bounded or unbounded knapsack types")
+        suggestions.append(
+            "For large problems, consider using bounded or unbounded knapsack types"
+        )
 
     return ValidationResult(
         is_valid=len(errors) == 0,
@@ -255,9 +268,9 @@ def validate_knapsack_problem(data: dict[str, Any]) -> ValidationResult:
 
 def validate_transportation_problem(data: dict[str, Any]) -> ValidationResult:
     """Validate transportation problem data."""
-    errors = []
-    warnings = []
-    suggestions = []
+    errors: list[str] = []
+    warnings: list[str] = []
+    suggestions: list[str] = []
 
     # Check required fields
     required_fields = ["suppliers", "consumers", "costs"]
@@ -279,7 +292,10 @@ def validate_transportation_problem(data: dict[str, Any]) -> ValidationResult:
                     errors.append(f"Supplier {i} missing required field: name")
                 if "supply" not in supplier:
                     errors.append(f"Supplier {i} missing required field: supply")
-                elif not isinstance(supplier["supply"], int | float) or supplier["supply"] < 0:
+                elif (
+                    not isinstance(supplier["supply"], int | float)
+                    or supplier["supply"] < 0
+                ):
                     errors.append(f"Supplier {i} supply must be a non-negative number")
 
     if "consumers" in data:
@@ -296,7 +312,10 @@ def validate_transportation_problem(data: dict[str, Any]) -> ValidationResult:
                     errors.append(f"Consumer {i} missing required field: name")
                 if "demand" not in consumer:
                     errors.append(f"Consumer {i} missing required field: demand")
-                elif not isinstance(consumer["demand"], int | float) or consumer["demand"] < 0:
+                elif (
+                    not isinstance(consumer["demand"], int | float)
+                    or consumer["demand"] < 0
+                ):
                     errors.append(f"Consumer {i} demand must be a non-negative number")
 
     if "costs" in data:
@@ -321,7 +340,9 @@ def validate_transportation_problem(data: dict[str, Any]) -> ValidationResult:
                 else:
                     for j, cost in enumerate(row):
                         if not isinstance(cost, int | float) or cost < 0:
-                            errors.append(f"Cost matrix element [{i}][{j}] must be a non-negative number")
+                            errors.append(
+                                f"Cost matrix element [{i}][{j}] must be a non-negative number"
+                            )
 
     # Check supply-demand balance
     if "suppliers" in data and "consumers" in data and not errors:
@@ -329,8 +350,12 @@ def validate_transportation_problem(data: dict[str, Any]) -> ValidationResult:
         total_demand = sum(consumer.get("demand", 0) for consumer in data["consumers"])
 
         if abs(total_supply - total_demand) > 1e-6:
-            errors.append(f"Total supply ({total_supply}) must equal total demand ({total_demand})")
-            suggestions.append("Consider adding dummy suppliers/consumers to balance the problem")
+            errors.append(
+                f"Total supply ({total_supply}) must equal total demand ({total_demand})"
+            )
+            suggestions.append(
+                "Consider adding dummy suppliers/consumers to balance the problem"
+            )
 
     if not errors:
         suggestions.append("Ensure cost matrix represents actual transportation costs")
@@ -346,9 +371,9 @@ def validate_transportation_problem(data: dict[str, Any]) -> ValidationResult:
 
 def validate_routing_problem(data: dict[str, Any]) -> ValidationResult:
     """Validate routing problem data (TSP/VRP)."""
-    errors = []
-    warnings = []
-    suggestions = []
+    errors: list[str] = []
+    warnings: list[str] = []
+    suggestions: list[str] = []
 
     # Check required fields
     if "locations" not in data:
@@ -362,16 +387,18 @@ def validate_routing_problem(data: dict[str, Any]) -> ValidationResult:
             if not isinstance(location, dict):
                 errors.append(f"Location {i} must be a dictionary")
                 continue
-            
+
             if "name" not in location:
                 errors.append(f"Location {i} missing required field: name")
-            
+
             # Check coordinates
             has_lat_lng = "lat" in location and "lng" in location
             has_x_y = "x" in location and "y" in location
-            
+
             if not has_lat_lng and not has_x_y and "distance_matrix" not in data:
-                errors.append(f"Location {i} must have either lat/lng or x/y coordinates, or provide distance_matrix")
+                errors.append(
+                    f"Location {i} must have either lat/lng or x/y coordinates, or provide distance_matrix"
+                )
 
     # For VRP, check vehicles
     if "vehicles" in data:
@@ -390,9 +417,9 @@ def validate_routing_problem(data: dict[str, Any]) -> ValidationResult:
 
 def validate_scheduling_problem(data: dict[str, Any]) -> ValidationResult:
     """Validate scheduling problem data."""
-    errors = []
-    warnings = []
-    suggestions = []
+    errors: list[str] = []
+    warnings: list[str] = []
+    suggestions: list[str] = []
 
     # Job scheduling validation
     if "jobs" in data:
@@ -405,10 +432,10 @@ def validate_scheduling_problem(data: dict[str, Any]) -> ValidationResult:
                 if not isinstance(job, dict):
                     errors.append(f"Job {i} must be a dictionary")
                     continue
-                
+
                 if "id" not in job:
                     errors.append(f"Job {i} missing required field: id")
-                
+
                 if "tasks" not in job:
                     errors.append(f"Job {i} missing required field: tasks")
                 elif not isinstance(job["tasks"], list):
@@ -439,9 +466,9 @@ def validate_scheduling_problem(data: dict[str, Any]) -> ValidationResult:
 
 def validate_portfolio_problem(data: dict[str, Any]) -> ValidationResult:
     """Validate portfolio optimization data."""
-    errors = []
-    warnings = []
-    suggestions = []
+    errors: list[str] = []
+    warnings: list[str] = []
+    suggestions: list[str] = []
 
     if "assets" not in data:
         errors.append("Missing required field: assets")
@@ -454,7 +481,7 @@ def validate_portfolio_problem(data: dict[str, Any]) -> ValidationResult:
             if not isinstance(asset, dict):
                 errors.append(f"Asset {i} must be a dictionary")
                 continue
-            
+
             required_fields = ["name", "expected_return", "risk"]
             for field in required_fields:
                 if field not in asset:
@@ -475,9 +502,9 @@ def validate_portfolio_problem(data: dict[str, Any]) -> ValidationResult:
 
 def validate_production_problem(data: dict[str, Any]) -> ValidationResult:
     """Validate production planning data."""
-    errors = []
-    warnings = []
-    suggestions = []
+    errors: list[str] = []
+    warnings: list[str] = []
+    suggestions: list[str] = []
 
     if "products" not in data:
         errors.append("Missing required field: products")
@@ -534,7 +561,9 @@ def register_validation_tools(mcp: FastMCP[Any]) -> None:
             if prob_type == ProblemType.LINEAR_PROGRAM:
                 result = validate_linear_program(input_data)
             elif prob_type == ProblemType.INTEGER_PROGRAM:
-                result = validate_linear_program(input_data)  # Same validation as linear program
+                result = validate_linear_program(
+                    input_data
+                )  # Same validation as linear program
             elif prob_type == ProblemType.ASSIGNMENT:
                 result = validate_assignment_problem(input_data)
             elif prob_type == ProblemType.TRANSPORTATION:
@@ -543,7 +572,10 @@ def register_validation_tools(mcp: FastMCP[Any]) -> None:
                 result = validate_knapsack_problem(input_data)
             elif prob_type in [ProblemType.TSP, ProblemType.VRP]:
                 result = validate_routing_problem(input_data)
-            elif prob_type in [ProblemType.JOB_SCHEDULING, ProblemType.SHIFT_SCHEDULING]:
+            elif prob_type in [
+                ProblemType.JOB_SCHEDULING,
+                ProblemType.SHIFT_SCHEDULING,
+            ]:
                 result = validate_scheduling_problem(input_data)
             elif prob_type == ProblemType.PORTFOLIO:
                 result = validate_portfolio_problem(input_data)

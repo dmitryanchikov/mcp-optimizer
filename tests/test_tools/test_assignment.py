@@ -1,10 +1,10 @@
 """Tests for assignment tools."""
 
 import pytest
+from fastmcp import FastMCP
 
 from mcp_optimizer.solvers.ortools_solver import ORToolsSolver
 from mcp_optimizer.tools.assignment import register_assignment_tools
-from fastmcp import FastMCP
 
 
 class TestAssignmentTools:
@@ -217,45 +217,48 @@ class TestAssignmentToolsValidation:
 
     async def test_assignment_tool_empty_workers_validation(self, mcp_server):
         """Test assignment tool validation with empty workers."""
-        result = await mcp_server.call_tool("solve_assignment_problem", {
-            "workers": [],
-            "tasks": ["Task1"],
-            "costs": []
-        })
+        result = await mcp_server.call_tool(
+            "solve_assignment_problem", {"workers": [], "tasks": ["Task1"], "costs": []}
+        )
 
         assert result["status"] == "error"
         assert "workers" in result["error_message"].lower()
 
     async def test_assignment_tool_empty_tasks_validation(self, mcp_server):
         """Test assignment tool validation with empty tasks."""
-        result = await mcp_server.call_tool("solve_assignment_problem", {
-            "workers": ["Worker1"],
-            "tasks": [],
-            "costs": [[]]
-        })
+        result = await mcp_server.call_tool(
+            "solve_assignment_problem",
+            {"workers": ["Worker1"], "tasks": [], "costs": [[]]},
+        )
 
         assert result["status"] == "error"
         assert "tasks" in result["error_message"].lower()
 
     async def test_transportation_tool_empty_suppliers_validation(self, mcp_server):
         """Test transportation tool validation with empty suppliers."""
-        result = await mcp_server.call_tool("solve_transportation_problem", {
-            "suppliers": [],
-            "consumers": [{"name": "Consumer", "demand": 100}],
-            "costs": []
-        })
+        result = await mcp_server.call_tool(
+            "solve_transportation_problem",
+            {
+                "suppliers": [],
+                "consumers": [{"name": "Consumer", "demand": 100}],
+                "costs": [],
+            },
+        )
 
         assert result["status"] == "error"
         assert "suppliers" in result["error_message"].lower()
 
     async def test_transportation_tool_unbalanced_validation(self, mcp_server):
         """Test transportation tool validation with unbalanced supply/demand."""
-        result = await mcp_server.call_tool("solve_transportation_problem", {
-            "suppliers": [{"name": "Supplier", "supply": 100}],
-            "consumers": [{"name": "Consumer", "demand": 150}],
-            "costs": [[5]]
-        })
+        result = await mcp_server.call_tool(
+            "solve_transportation_problem",
+            {
+                "suppliers": [{"name": "Supplier", "supply": 100}],
+                "consumers": [{"name": "Consumer", "demand": 150}],
+                "costs": [[5]],
+            },
+        )
 
         assert result["status"] == "error"
         assert "supply" in result["error_message"].lower()
-        assert "demand" in result["error_message"].lower() 
+        assert "demand" in result["error_message"].lower()

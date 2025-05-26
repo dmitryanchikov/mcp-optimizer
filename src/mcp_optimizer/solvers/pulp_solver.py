@@ -4,7 +4,7 @@ import logging
 import time
 from typing import Any
 
-import pulp  # type: ignore
+import pulp
 
 from mcp_optimizer.config import SolverType, settings
 from mcp_optimizer.schemas.base import (

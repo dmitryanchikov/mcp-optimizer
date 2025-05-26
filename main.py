@@ -14,7 +14,7 @@ def setup_logging() -> None:
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[
             logging.StreamHandler(sys.stderr),
-        ]
+        ],
     )
 
 
@@ -22,17 +22,17 @@ def main() -> None:
     """Main entry point for the MCP server."""
     setup_logging()
     logger = logging.getLogger(__name__)
-    
+
     try:
         # Create MCP server with all optimization tools
         mcp = create_mcp_server()
-        
+
         logger.info("Starting MCP Optimizer server...")
         logger.info("Server created successfully with all optimization tools")
-        
+
         # Run the server (FastMCP handles asyncio internally)
         mcp.run()
-        
+
     except KeyboardInterrupt:
         logger.info("Server stopped by user")
     except Exception as e:

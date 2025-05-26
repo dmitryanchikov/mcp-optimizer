@@ -10,6 +10,7 @@ from mcp_optimizer.solvers.pulp_solver import PuLPSolver
 
 logger = logging.getLogger(__name__)
 
+
 # Define functions that can be imported directly
 def solve_linear_program(
     objective: dict[str, Any],
@@ -22,9 +23,7 @@ def solve_linear_program(
     try:
         # Parse and validate input
         obj = Objective(**objective)
-        vars_dict = {
-            name: Variable(**var_data) for name, var_data in variables.items()
-        }
+        vars_dict = {name: Variable(**var_data) for name, var_data in variables.items()}
         constraints_list = [Constraint(**constraint) for constraint in constraints]
 
         # Create solver
@@ -38,7 +37,9 @@ def solve_linear_program(
             time_limit=time_limit_seconds,
         )
 
-        logger.info(f"Linear program solved with status: {result.get('status') if isinstance(result, dict) else result}")
+        logger.info(
+            f"Linear program solved with status: {result.get('status') if isinstance(result, dict) else result}"
+        )
         return result if isinstance(result, dict) else {"error": "Invalid result type"}
 
     except Exception as e:
@@ -64,9 +65,7 @@ def solve_integer_program(
     try:
         # Parse and validate input
         obj = Objective(**objective)
-        vars_dict = {
-            name: Variable(**var_data) for name, var_data in variables.items()
-        }
+        vars_dict = {name: Variable(**var_data) for name, var_data in variables.items()}
         constraints_list = [Constraint(**constraint) for constraint in constraints]
 
         # Create solver
@@ -80,7 +79,9 @@ def solve_integer_program(
             time_limit=time_limit_seconds,
         )
 
-        logger.info(f"Integer program solved with status: {result.get('status') if isinstance(result, dict) else result}")
+        logger.info(
+            f"Integer program solved with status: {result.get('status') if isinstance(result, dict) else result}"
+        )
         return result if isinstance(result, dict) else {"error": "Invalid result type"}
 
     except Exception as e:
@@ -146,7 +147,9 @@ def register_linear_programming_tools(mcp: FastMCP[Any]) -> None:
                 ]
             )
         """
-        return solve_linear_program(objective, variables, constraints, solver, time_limit_seconds)
+        return solve_linear_program(
+            objective, variables, constraints, solver, time_limit_seconds
+        )
 
     @mcp.tool()
     def solve_integer_program_tool(
@@ -192,6 +195,8 @@ def register_linear_programming_tools(mcp: FastMCP[Any]) -> None:
                 ]
             )
         """
-        return solve_integer_program(objective, variables, constraints, solver, time_limit_seconds)
+        return solve_integer_program(
+            objective, variables, constraints, solver, time_limit_seconds
+        )
 
     logger.info("Registered linear programming tools")

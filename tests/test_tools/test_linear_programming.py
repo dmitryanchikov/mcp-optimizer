@@ -1,6 +1,5 @@
 """Tests for linear programming tools."""
 
-
 from mcp_optimizer.schemas.base import (
     Constraint,
     ConstraintOperator,

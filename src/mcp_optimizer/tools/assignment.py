@@ -9,6 +9,7 @@ from mcp_optimizer.solvers.ortools_solver import ORToolsSolver
 
 logger = logging.getLogger(__name__)
 
+
 # Define functions that can be imported directly
 def solve_assignment_problem(
     workers: list[str],
@@ -188,7 +189,9 @@ def solve_transportation_problem(
             costs=costs,
         )
 
-        logger.info(f"Transportation problem solved with status: {result.get('status')}")
+        logger.info(
+            f"Transportation problem solved with status: {result.get('status')}"
+        )
         return result
 
     except Exception as e:
@@ -251,7 +254,9 @@ def register_assignment_tools(mcp: FastMCP[Any]) -> None:
                 ]
             )
         """
-        return solve_assignment_problem(workers, tasks, costs, maximize, max_tasks_per_worker, min_tasks_per_worker)
+        return solve_assignment_problem(
+            workers, tasks, costs, maximize, max_tasks_per_worker, min_tasks_per_worker
+        )
 
     @mcp.tool()
     def solve_transportation_problem_tool(
@@ -302,4 +307,4 @@ def register_assignment_tools(mcp: FastMCP[Any]) -> None:
         """
         return solve_transportation_problem(suppliers, consumers, costs)
 
-    logger.info("Registered assignment and transportation tools") 
+    logger.info("Registered assignment and transportation tools")
