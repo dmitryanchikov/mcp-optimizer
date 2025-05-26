@@ -390,11 +390,54 @@ def solve_risk_parity_portfolio(input_data: Dict[str, Any]) -> OptimizationResul
         )
 
 
+# Define function that can be imported directly
+def optimize_portfolio(
+    assets: list[dict[str, Any]],
+    objective: str = "maximize_return",
+    budget: float = 1.0,
+    risk_tolerance: float | None = None,
+    sector_constraints: dict[str, float] | None = None,
+    min_allocation: float = 0.0,
+    max_allocation: float = 1.0,
+) -> dict[str, Any]:
+    """Optimize portfolio allocation to maximize return or minimize risk."""
+    try:
+        input_data = {
+            "assets": assets,
+            "objective": objective,
+            "budget": budget,
+            "risk_tolerance": risk_tolerance or 0.0,
+            "sector_limits": sector_constraints or {},
+            "min_allocation": min_allocation,
+            "max_allocation": max_allocation,
+        }
+        
+        result = solve_portfolio_optimization(input_data)
+        return {
+            "status": result.status,
+            "objective_value": result.objective_value,
+            "variables": result.variables,
+            "execution_time": result.execution_time,
+            "solver_info": result.solver_info,
+            "error_message": result.error_message,
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "objective_value": None,
+            "variables": {},
+            "execution_time": 0.0,
+            "solver_info": {},
+            "error_message": f"Failed to optimize portfolio: {str(e)}",
+        }
+
+
 def register_financial_tools(mcp: FastMCP[Any]) -> None:
     """Register financial optimization tools with MCP server."""
     
     @mcp.tool()
-    def optimize_portfolio(
+    def optimize_portfolio_tool(
         assets: List[Dict[str, Any]],
         objective: str = "maximize_return",
         budget: float = 1.0,
@@ -421,17 +464,4 @@ def register_financial_tools(mcp: FastMCP[Any]) -> None:
         Returns:
             Optimization result with optimal portfolio allocation
         """
-        input_data = {
-            "assets": assets,
-            "objective": objective,
-            "budget": budget,
-            "risk_tolerance": risk_tolerance,
-            "sector_constraints": sector_constraints,
-            "min_allocation": min_allocation,
-            "max_allocation": max_allocation,
-            "solver_name": solver_name,
-            "time_limit_seconds": time_limit_seconds
-        }
-        
-        result = solve_portfolio_optimization(input_data)
-        return result.model_dump() 
+        return optimize_portfolio(assets, objective, budget, risk_tolerance, sector_constraints, min_allocation, max_allocation) 

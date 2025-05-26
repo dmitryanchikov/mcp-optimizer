@@ -9,12 +9,204 @@ from mcp_optimizer.solvers.ortools_solver import ORToolsSolver
 
 logger = logging.getLogger(__name__)
 
+# Define functions that can be imported directly
+def solve_assignment_problem(
+    workers: list[str],
+    tasks: list[str],
+    costs: list[list[float]],
+    maximize: bool = False,
+    max_tasks_per_worker: int | None = None,
+    min_tasks_per_worker: int | None = None,
+) -> dict[str, Any]:
+    """Solve assignment problem using OR-Tools."""
+    try:
+        # Validate input
+        if not workers:
+            return {
+                "status": "error",
+                "total_cost": None,
+                "assignments": [],
+                "execution_time": 0.0,
+                "error_message": "No workers provided",
+            }
+
+        if not tasks:
+            return {
+                "status": "error",
+                "total_cost": None,
+                "assignments": [],
+                "execution_time": 0.0,
+                "error_message": "No tasks provided",
+            }
+
+        if len(costs) != len(workers):
+            return {
+                "status": "error",
+                "total_cost": None,
+                "assignments": [],
+                "execution_time": 0.0,
+                "error_message": f"Cost matrix rows ({len(costs)}) must match workers count ({len(workers)})",
+            }
+
+        for i, row in enumerate(costs):
+            if len(row) != len(tasks):
+                return {
+                    "status": "error",
+                    "total_cost": None,
+                    "assignments": [],
+                    "execution_time": 0.0,
+                    "error_message": f"Cost matrix row {i} length ({len(row)}) must match tasks count ({len(tasks)})",
+                }
+
+        # Create solver and solve
+        solver = ORToolsSolver()
+        result = solver.solve_assignment_problem(
+            workers=workers,
+            tasks=tasks,
+            costs=costs,
+            maximize=maximize,
+            max_tasks_per_worker=max_tasks_per_worker,
+            min_tasks_per_worker=min_tasks_per_worker,
+        )
+
+        logger.info(f"Assignment problem solved with status: {result.get('status')}")
+        return result
+
+    except Exception as e:
+        logger.error(f"Error in solve_assignment_problem: {e}")
+        return {
+            "status": "error",
+            "total_cost": None,
+            "assignments": [],
+            "execution_time": 0.0,
+            "error_message": f"Failed to solve assignment problem: {str(e)}",
+        }
+
+
+def solve_transportation_problem(
+    suppliers: list[dict[str, Any]],
+    consumers: list[dict[str, Any]],
+    costs: list[list[float]],
+) -> dict[str, Any]:
+    """Solve transportation problem using OR-Tools."""
+    try:
+        # Validate input
+        if not suppliers:
+            return {
+                "status": "error",
+                "total_cost": None,
+                "flows": [],
+                "execution_time": 0.0,
+                "error_message": "No suppliers provided",
+            }
+
+        if not consumers:
+            return {
+                "status": "error",
+                "total_cost": None,
+                "flows": [],
+                "execution_time": 0.0,
+                "error_message": "No consumers provided",
+            }
+
+        # Validate supplier format
+        for i, supplier in enumerate(suppliers):
+            if not isinstance(supplier, dict):
+                return {
+                    "status": "error",
+                    "total_cost": None,
+                    "flows": [],
+                    "execution_time": 0.0,
+                    "error_message": f"Supplier {i} must be a dictionary",
+                }
+            if "name" not in supplier or "supply" not in supplier:
+                return {
+                    "status": "error",
+                    "total_cost": None,
+                    "flows": [],
+                    "execution_time": 0.0,
+                    "error_message": f"Supplier {i} must have 'name' and 'supply' fields",
+                }
+
+        # Validate consumer format
+        for i, consumer in enumerate(consumers):
+            if not isinstance(consumer, dict):
+                return {
+                    "status": "error",
+                    "total_cost": None,
+                    "flows": [],
+                    "execution_time": 0.0,
+                    "error_message": f"Consumer {i} must be a dictionary",
+                }
+            if "name" not in consumer or "demand" not in consumer:
+                return {
+                    "status": "error",
+                    "total_cost": None,
+                    "flows": [],
+                    "execution_time": 0.0,
+                    "error_message": f"Consumer {i} must have 'name' and 'demand' fields",
+                }
+
+        # Validate cost matrix dimensions
+        if len(costs) != len(suppliers):
+            return {
+                "status": "error",
+                "total_cost": None,
+                "flows": [],
+                "execution_time": 0.0,
+                "error_message": f"Cost matrix rows ({len(costs)}) must match suppliers count ({len(suppliers)})",
+            }
+
+        for i, row in enumerate(costs):
+            if len(row) != len(consumers):
+                return {
+                    "status": "error",
+                    "total_cost": None,
+                    "flows": [],
+                    "execution_time": 0.0,
+                    "error_message": f"Cost matrix row {i} length ({len(row)}) must match consumers count ({len(consumers)})",
+                }
+
+        # Check supply-demand balance
+        total_supply = sum(supplier["supply"] for supplier in suppliers)
+        total_demand = sum(consumer["demand"] for consumer in consumers)
+
+        if abs(total_supply - total_demand) > 1e-6:
+            return {
+                "status": "error",
+                "total_cost": None,
+                "flows": [],
+                "execution_time": 0.0,
+                "error_message": f"Total supply ({total_supply}) must equal total demand ({total_demand})",
+            }
+
+        # Create solver and solve
+        solver = ORToolsSolver()
+        result = solver.solve_transportation_problem(
+            suppliers=suppliers,
+            consumers=consumers,
+            costs=costs,
+        )
+
+        logger.info(f"Transportation problem solved with status: {result.get('status')}")
+        return result
+
+    except Exception as e:
+        logger.error(f"Error in solve_transportation_problem: {e}")
+        return {
+            "status": "error",
+            "total_cost": None,
+            "flows": [],
+            "execution_time": 0.0,
+            "error_message": f"Failed to solve transportation problem: {str(e)}",
+        }
+
 
 def register_assignment_tools(mcp: FastMCP[Any]) -> None:
     """Register assignment problem tools with the MCP server."""
 
     @mcp.tool()
-    def solve_assignment_problem(
+    def solve_assignment_problem_tool(
         workers: list[str],
         tasks: list[str],
         costs: list[list[float]],
@@ -59,71 +251,10 @@ def register_assignment_tools(mcp: FastMCP[Any]) -> None:
                 ]
             )
         """
-        try:
-            # Validate input
-            if not workers:
-                return {
-                    "status": "error",
-                    "total_cost": None,
-                    "assignments": [],
-                    "execution_time": 0.0,
-                    "error_message": "No workers provided",
-                }
-
-            if not tasks:
-                return {
-                    "status": "error",
-                    "total_cost": None,
-                    "assignments": [],
-                    "execution_time": 0.0,
-                    "error_message": "No tasks provided",
-                }
-
-            if len(costs) != len(workers):
-                return {
-                    "status": "error",
-                    "total_cost": None,
-                    "assignments": [],
-                    "execution_time": 0.0,
-                    "error_message": f"Cost matrix rows ({len(costs)}) must match workers count ({len(workers)})",
-                }
-
-            for i, row in enumerate(costs):
-                if len(row) != len(tasks):
-                    return {
-                        "status": "error",
-                        "total_cost": None,
-                        "assignments": [],
-                        "execution_time": 0.0,
-                        "error_message": f"Cost matrix row {i} length ({len(row)}) must match tasks count ({len(tasks)})",
-                    }
-
-            # Create solver and solve
-            solver = ORToolsSolver()
-            result = solver.solve_assignment_problem(
-                workers=workers,
-                tasks=tasks,
-                costs=costs,
-                maximize=maximize,
-                max_tasks_per_worker=max_tasks_per_worker,
-                min_tasks_per_worker=min_tasks_per_worker,
-            )
-
-            logger.info(f"Assignment problem solved with status: {result.get('status')}")
-            return result
-
-        except Exception as e:
-            logger.error(f"Error in solve_assignment_problem: {e}")
-            return {
-                "status": "error",
-                "total_cost": None,
-                "assignments": [],
-                "execution_time": 0.0,
-                "error_message": f"Failed to solve assignment problem: {str(e)}",
-            }
+        return solve_assignment_problem(workers, tasks, costs, maximize, max_tasks_per_worker, min_tasks_per_worker)
 
     @mcp.tool()
-    def solve_transportation_problem(
+    def solve_transportation_problem_tool(
         suppliers: list[dict[str, Any]],
         consumers: list[dict[str, Any]],
         costs: list[list[float]],
@@ -169,116 +300,6 @@ def register_assignment_tools(mcp: FastMCP[Any]) -> None:
                 ]
             )
         """
-        try:
-            # Validate input
-            if not suppliers:
-                return {
-                    "status": "error",
-                    "total_cost": None,
-                    "flows": [],
-                    "execution_time": 0.0,
-                    "error_message": "No suppliers provided",
-                }
-
-            if not consumers:
-                return {
-                    "status": "error",
-                    "total_cost": None,
-                    "flows": [],
-                    "execution_time": 0.0,
-                    "error_message": "No consumers provided",
-                }
-
-            # Validate supplier format
-            for i, supplier in enumerate(suppliers):
-                if not isinstance(supplier, dict):
-                    return {
-                        "status": "error",
-                        "total_cost": None,
-                        "flows": [],
-                        "execution_time": 0.0,
-                        "error_message": f"Supplier {i} must be a dictionary",
-                    }
-                if "name" not in supplier or "supply" not in supplier:
-                    return {
-                        "status": "error",
-                        "total_cost": None,
-                        "flows": [],
-                        "execution_time": 0.0,
-                        "error_message": f"Supplier {i} must have 'name' and 'supply' fields",
-                    }
-
-            # Validate consumer format
-            for i, consumer in enumerate(consumers):
-                if not isinstance(consumer, dict):
-                    return {
-                        "status": "error",
-                        "total_cost": None,
-                        "flows": [],
-                        "execution_time": 0.0,
-                        "error_message": f"Consumer {i} must be a dictionary",
-                    }
-                if "name" not in consumer or "demand" not in consumer:
-                    return {
-                        "status": "error",
-                        "total_cost": None,
-                        "flows": [],
-                        "execution_time": 0.0,
-                        "error_message": f"Consumer {i} must have 'name' and 'demand' fields",
-                    }
-
-            # Validate cost matrix dimensions
-            if len(costs) != len(suppliers):
-                return {
-                    "status": "error",
-                    "total_cost": None,
-                    "flows": [],
-                    "execution_time": 0.0,
-                    "error_message": f"Cost matrix rows ({len(costs)}) must match suppliers count ({len(suppliers)})",
-                }
-
-            for i, row in enumerate(costs):
-                if len(row) != len(consumers):
-                    return {
-                        "status": "error",
-                        "total_cost": None,
-                        "flows": [],
-                        "execution_time": 0.0,
-                        "error_message": f"Cost matrix row {i} length ({len(row)}) must match consumers count ({len(consumers)})",
-                    }
-
-            # Check supply-demand balance
-            total_supply = sum(supplier["supply"] for supplier in suppliers)
-            total_demand = sum(consumer["demand"] for consumer in consumers)
-
-            if abs(total_supply - total_demand) > 1e-6:
-                return {
-                    "status": "error",
-                    "total_cost": None,
-                    "flows": [],
-                    "execution_time": 0.0,
-                    "error_message": f"Total supply ({total_supply}) must equal total demand ({total_demand})",
-                }
-
-            # Create solver and solve
-            solver = ORToolsSolver()
-            result = solver.solve_transportation_problem(
-                suppliers=suppliers,
-                consumers=consumers,
-                costs=costs,
-            )
-
-            logger.info(f"Transportation problem solved with status: {result.get('status')}")
-            return result
-
-        except Exception as e:
-            logger.error(f"Error in solve_transportation_problem: {e}")
-            return {
-                "status": "error",
-                "total_cost": None,
-                "flows": [],
-                "execution_time": 0.0,
-                "error_message": f"Failed to solve transportation problem: {str(e)}",
-            }
+        return solve_transportation_problem(suppliers, consumers, costs)
 
     logger.info("Registered assignment and transportation tools") 

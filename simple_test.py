@@ -99,7 +99,7 @@ def test_transportation_problem():
         print("Shipments:")
         for shipment in result['shipments']:
             print(f"  {shipment['from']} -> {shipment['to']}: {shipment['quantity']} units (cost: {shipment['cost']})")
-    print()
+        print()
 
 
 def main():

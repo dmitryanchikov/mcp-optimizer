@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mcp-optimizer
+  labels:
+    name: mcp-optimizer
+    app.kubernetes.io/name: mcp-optimizer
+    app.kubernetes.io/component: namespace 

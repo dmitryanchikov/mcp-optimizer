@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcp-optimizer-config
+  namespace: mcp-optimizer
+  labels:
+    app.kubernetes.io/name: mcp-optimizer
+    app.kubernetes.io/component: config
+data:
+  MCP_OPTIMIZER_LOG_LEVEL: "INFO"
+  MCP_OPTIMIZER_MAX_SOLVE_TIME: "300"
+  MCP_OPTIMIZER_MAX_MEMORY_MB: "1024"
+  MCP_OPTIMIZER_MAX_CONCURRENT_REQUESTS: "10"
+  PYTHONPATH: "/app/src" 

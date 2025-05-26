@@ -1,0 +1,167 @@
+version: '3.8'
+
+services:
+  # MCP Optimizer API Service
+  mcp-optimizer-api:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile
+    container_name: mcp-optimizer-api
+    ports:
+      - "8000:8000"
+      - "9090:9090"
+    environment:
+      - SOLVER_TIMEOUT=300
+      - MAX_ITERATIONS=10000
+      - SOLVER_THREADS=4
+      - LOG_LEVEL=INFO
+      - CACHE_ENABLED=true
+      - CACHE_TTL=3600
+      - REDIS_URL=redis://redis:6379
+      - POSTGRES_URL=postgresql://optimizer:password@postgres:5432/optimizer_db
+    depends_on:
+      - redis
+      - postgres
+    volumes:
+      - ./logs:/app/logs
+      - ./config:/app/config
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis for caching
+  redis:
+    image: redis:7-alpine
+    container_name: mcp-optimizer-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PostgreSQL for job storage
+  postgres:
+    image: postgres:15-alpine
+    container_name: mcp-optimizer-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=optimizer_db
+      - POSTGRES_USER=optimizer
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U optimizer -d optimizer_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus for monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: mcp-optimizer-prometheus
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: mcp-optimizer-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: mcp-optimizer-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./nginx/logs:/var/log/nginx
+    depends_on:
+      - mcp-optimizer-api
+    restart: unless-stopped
+
+  # Worker for background jobs
+  mcp-optimizer-worker:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile
+    container_name: mcp-optimizer-worker
+    environment:
+      - WORKER_MODE=true
+      - REDIS_URL=redis://redis:6379
+      - POSTGRES_URL=postgresql://optimizer:password@postgres:5432/optimizer_db
+      - LOG_LEVEL=INFO
+    depends_on:
+      - redis
+      - postgres
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    command: ["python", "-m", "mcp_optimizer.worker"]
+
+  # Scheduler for periodic tasks
+  mcp-optimizer-scheduler:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile
+    container_name: mcp-optimizer-scheduler
+    environment:
+      - SCHEDULER_MODE=true
+      - REDIS_URL=redis://redis:6379
+      - POSTGRES_URL=postgresql://optimizer:password@postgres:5432/optimizer_db
+      - LOG_LEVEL=INFO
+    depends_on:
+      - redis
+      - postgres
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    command: ["python", "-m", "mcp_optimizer.scheduler"]
+
+volumes:
+  redis_data:
+  postgres_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  default:
+    name: mcp-optimizer-network 

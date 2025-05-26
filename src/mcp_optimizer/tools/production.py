@@ -394,11 +394,72 @@ def solve_production_planning(input_data: Dict[str, Any]) -> OptimizationResult:
             execution_time=time.time() - start_time
         )
 
+# Define function that can be imported directly
+def optimize_production(
+    products: list[dict[str, Any]],
+    constraints: dict[str, float],
+    objective: str = "maximize_profit",
+) -> dict[str, Any]:
+    """Optimize production to maximize profit or minimize costs."""
+    try:
+        # Convert simple format to full production planning format
+        product_list = []
+        for product in products:
+            product_list.append({
+                "name": product["name"],
+                "profit": product["profit"],
+                "resources": {k: v for k, v in product.items() if k not in ["name", "profit"]},
+                "production_time": 1.0,
+                "min_production": 0.0,
+                "max_production": None,
+                "setup_cost": 0.0,
+            })
+        
+        resources = {}
+        for resource_name, capacity in constraints.items():
+            resources[resource_name] = {
+                "name": resource_name,
+                "available": capacity,
+                "cost": 0.0,
+                "renewable": True,
+            }
+        
+        input_data = {
+            "products": product_list,
+            "resources": resources,
+            "demand_constraints": [],
+            "planning_horizon": 1,
+            "objective": objective,
+            "allow_backorders": False,
+            "inventory_cost": 0.0,
+        }
+        
+        result = solve_production_planning(input_data)
+        return {
+            "status": result.status,
+            "objective_value": result.objective_value,
+            "variables": result.variables,
+            "execution_time": result.execution_time,
+            "solver_info": result.solver_info,
+            "error_message": result.error_message,
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "objective_value": None,
+            "variables": {},
+            "execution_time": 0.0,
+            "solver_info": {},
+            "error_message": f"Failed to optimize production: {str(e)}",
+        }
+
+
 def register_production_tools(mcp: FastMCP[Any]) -> None:
     """Register production planning optimization tools with MCP server."""
     
     @mcp.tool()
-    def optimize_production_plan(
+    def optimize_production_plan_tool(
         products: List[Dict[str, Any]],
         resources: List[Dict[str, Any]],
         periods: int,

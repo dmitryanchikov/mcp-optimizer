@@ -5,7 +5,7 @@ This module provides tools for solving routing problems including:
 - Vehicle Routing Problem (VRP)
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 import math
 import time
 from pydantic import BaseModel, Field, validator
@@ -77,7 +77,7 @@ class VRPInput(BaseModel):
         return v
 
 
-def calculate_distance_matrix(locations: List[Location]) -> List[List[float]]:
+def calculate_distance_matrix(locations: List[Union[Location, Dict[str, Any]]]) -> List[List[float]]:
     """Calculate Euclidean distance matrix from location coordinates."""
     n = len(locations)
     matrix = [[0.0] * n for _ in range(n)]
@@ -89,15 +89,27 @@ def calculate_distance_matrix(locations: List[Location]) -> List[List[float]]:
             else:
                 loc1, loc2 = locations[i], locations[j]
                 
+                # Handle both Location objects and dictionaries
+                def get_coord(loc, key):
+                    if isinstance(loc, dict):
+                        return loc.get(key)
+                    else:
+                        return getattr(loc, key, None)
+
                 # Use lat/lng if available, otherwise use x/y
-                if loc1.lat is not None and loc1.lng is not None and \
-                   loc2.lat is not None and loc2.lng is not None:
+                lat1, lng1 = get_coord(loc1, 'lat'), get_coord(loc1, 'lng')
+                lat2, lng2 = get_coord(loc2, 'lat'), get_coord(loc2, 'lng')
+                x1, y1 = get_coord(loc1, 'x'), get_coord(loc1, 'y')
+                x2, y2 = get_coord(loc2, 'x'), get_coord(loc2, 'y')
+
+                if lat1 is not None and lng1 is not None and \
+                   lat2 is not None and lng2 is not None:
                     # Haversine distance for lat/lng
-                    distance = haversine_distance(loc1.lat, loc1.lng, loc2.lat, loc2.lng)
-                elif loc1.x is not None and loc1.y is not None and \
-                     loc2.x is not None and loc2.y is not None:
+                    distance = haversine_distance(lat1, lng1, lat2, lng2)
+                elif x1 is not None and y1 is not None and \
+                     x2 is not None and y2 is not None:
                     # Euclidean distance for x/y
-                    distance = math.sqrt((loc1.x - loc2.x)**2 + (loc1.y - loc2.y)**2)
+                    distance = math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
                 else:
                     raise ValueError(f"Insufficient coordinate data for locations {i} and {j}")
                 
@@ -142,7 +154,8 @@ def solve_traveling_salesman(input_data: Dict[str, Any]) -> OptimizationResult:
         if n_locations < 2:
             return OptimizationResult(
                 status="error",
-                error_message="At least 2 locations required for TSP"
+                error_message="At least 2 locations required for TSP",
+                execution_time=time.time() - start_time
             )
         
         # Get or calculate distance matrix
@@ -152,7 +165,8 @@ def solve_traveling_salesman(input_data: Dict[str, Any]) -> OptimizationResult:
                any(len(row) != n_locations for row in distance_matrix):
                 return OptimizationResult(
                     status="error",
-                    error_message="Distance matrix dimensions don't match number of locations"
+                    error_message="Distance matrix dimensions don't match number of locations",
+                    execution_time=time.time() - start_time
                 )
         else:
             distance_matrix = calculate_distance_matrix(locations)
@@ -280,13 +294,15 @@ def solve_vehicle_routing(input_data: Dict[str, Any]) -> OptimizationResult:
         if n_locations < 2:
             return OptimizationResult(
                 status="error",
-                error_message="At least 2 locations required for VRP"
+                error_message="At least 2 locations required for VRP",
+                execution_time=time.time() - start_time
             )
         
         if n_vehicles < 1:
             return OptimizationResult(
                 status="error",
-                error_message="At least 1 vehicle required for VRP"
+                error_message="At least 1 vehicle required for VRP",
+                execution_time=time.time() - start_time
             )
         
         # Get or calculate distance matrix
@@ -320,14 +336,14 @@ def solve_vehicle_routing(input_data: Dict[str, Any]) -> OptimizationResult:
         demand_callback_index = routing.RegisterUnaryTransitCallback(demand_callback)
         
         # Set vehicle capacities
-        for i, vehicle in enumerate(vehicles):
-            routing.AddDimensionWithVehicleCapacity(
-                demand_callback_index,
-                0,  # null capacity slack
-                [int(vehicle.capacity)],  # vehicle maximum capacities
-                True,  # start cumul to zero
-                f'Capacity_{i}'
-            )
+        vehicle_capacities = [int(vehicle.capacity) for vehicle in vehicles]
+        routing.AddDimensionWithVehicleCapacity(
+            demand_callback_index,
+            0,  # null capacity slack
+            vehicle_capacities,  # vehicle maximum capacities
+            True,  # start cumul to zero
+            'Capacity'
+        )
         
         # Set search parameters
         search_parameters = pywrapcp.DefaultRoutingSearchParameters()
