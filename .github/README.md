@@ -6,11 +6,12 @@ This directory contains GitHub-specific configuration files and documentation fo
 
 ### Workflow Files
 - **`workflows/ci.yml`** - Main CI/CD pipeline for testing, building, and releasing
+- **`workflows/auto-finalize-release.yml`** - Robust multi-method release detection and finalization
 
 ### Policy Documentation
-- **`BRANCH_POLICY.md`** - Complete Git Flow branching strategy and workflow guidelines
+- **`REPOSITORY_SETUP.md`** - Complete repository setup guide including Git Flow, branch protection, and security configuration
 - **`RELEASE_PROCESS.md`** - Detailed release process from planning to publication
-- **`BRANCH_PROTECTION.md`** - GitHub branch protection settings and configuration
+
 
 ### Templates
 - **`pull_request_template.md`** - Comprehensive PR template with checklists and guidelines

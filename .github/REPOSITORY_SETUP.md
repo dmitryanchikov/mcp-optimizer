@@ -19,48 +19,83 @@ git push origin develop
 
 ### 2. Configure Branch Protection Rules
 
+**⚠️ CRITICAL**: These protection rules are **required** for the secure automated release system to function properly.
+
 Navigate to **Settings** → **Branches** and add the following rules:
 
 #### Main Branch Protection
-- **Branch name pattern**: `main`
-- **Require pull request reviews**: ✅ (2 reviewers)
-- **Dismiss stale reviews**: ✅
-- **Require review from code owners**: ✅
-- **Require status checks**: ✅
-  - `test (3.11)`
-  - `test (3.12)`
-  - `security`
-  - `build`
-- **Require branches to be up to date**: ✅
-- **Require linear history**: ✅
-- **Restrict pushes to administrators**: ✅
-- **Do not allow force pushes**: ✅
-- **Do not allow deletions**: ✅
+**Branch name pattern:** `main`
+
+**Protection settings:**
+- ✅ **Require a pull request before merging**
+  - ✅ Require approvals: **2**
+  - ✅ Dismiss stale PR approvals when new commits are pushed
+  - ✅ Require review from code owners
+  - ✅ Require approval of the most recent reviewable push
+- ✅ **Require status checks to pass before merging**
+  - ✅ Require branches to be up to date before merging
+  - **Required status checks:**
+    - `ci`
+    - `security-scan` 
+    - `tests`
+- ✅ **Require conversation resolution before merging**
+- ✅ **Require signed commits**
+- ✅ **Require linear history**
+- ✅ **Do not allow bypassing the above settings**
+- ✅ **Restrict pushes that create files**
+- ❌ Allow force pushes
+- ❌ Allow deletions
 
 #### Develop Branch Protection
-- **Branch name pattern**: `develop`
-- **Require pull request reviews**: ✅ (1 reviewer)
-- **Dismiss stale reviews**: ✅
-- **Require status checks**: ✅
-  - `test (3.11)`
-  - `test (3.12)`
-  - `security`
-- **Require branches to be up to date**: ✅
-- **Allow administrators to bypass**: ✅
-- **Do not allow force pushes**: ✅
-- **Do not allow deletions**: ✅
+**Branch name pattern:** `develop`
+
+**Protection settings:**
+- ✅ **Require a pull request before merging**
+  - ✅ Require approvals: **1**
+  - ✅ Dismiss stale PR approvals when new commits are pushed
+  - ✅ Require review from code owners
+- ✅ **Require status checks to pass before merging**
+  - ✅ Require branches to be up to date before merging
+  - **Required status checks:**
+    - `ci`
+    - `tests`
+- ✅ **Require conversation resolution before merging**
+- ✅ **Require signed commits**
+- ❌ Do not allow bypassing the above settings (allow for maintainers)
+- ❌ Allow force pushes
+- ❌ Allow deletions
 
 #### Release Branch Protection
-- **Branch name pattern**: `release/*`
-- **Require pull request reviews**: ✅ (1 reviewer)
-- **Require review from code owners**: ✅
-- **Require status checks**: ✅
-  - `test (3.11)`
-  - `test (3.12)`
-  - `security`
-  - `build`
-- **Allow administrators to bypass**: ✅
-- **Allow deletions**: ✅ (for cleanup)
+**Branch name pattern:** `release/*`
+
+**Protection settings:**
+- ✅ **Require a pull request before merging**
+  - ✅ Require approvals: **1**
+  - ✅ Require review from code owners
+- ✅ **Require status checks to pass before merging**
+  - **Required status checks:**
+    - `ci`
+    - `tests`
+    - `security-scan`
+- ✅ **Require conversation resolution before merging**
+- ❌ Allow force pushes
+- ❌ Allow deletions
+
+#### Hotfix Branch Protection
+**Branch name pattern:** `hotfix/*`
+
+**Protection settings:**
+- ✅ **Require a pull request before merging**
+  - ✅ Require approvals: **2** (higher security for hotfixes)
+  - ✅ Require review from code owners
+- ✅ **Require status checks to pass before merging**
+  - **Required status checks:**
+    - `ci`
+    - `tests`
+    - `security-scan`
+- ✅ **Require conversation resolution before merging**
+- ❌ Allow force pushes
+- ❌ Allow deletions
 
 ### 3. Configure Repository Settings
 
@@ -149,6 +184,32 @@ git push origin feature/test-setup
 # - Merge is blocked until requirements are met
 ```
 
+#### Test Release Detection
+```bash
+# Create a test release branch
+git checkout develop
+git checkout -b release/v999.999.999
+echo 'version = "999.999.999"' >> pyproject.toml
+git add pyproject.toml
+git commit -m "chore: prepare test release"
+git push origin release/v999.999.999
+
+# Create PR to main - should trigger detection when merged
+```
+
+### 8. Validation Checklist
+
+- [ ] Cannot push directly to `main`
+- [ ] Cannot push directly to `develop`
+- [ ] PRs to `main` require 2 approvals
+- [ ] PRs to `develop` require 1 approval
+- [ ] All status checks must pass
+- [ ] Code owner reviews are required
+- [ ] Release branch merges trigger automation
+- [ ] Non-release merges do not trigger automation
+- [ ] Hotfix branches require 2 approvals
+- [ ] Security scans are required for releases
+
 ## 🔧 Automation Scripts
 
 ### GitHub CLI Setup
@@ -217,15 +278,39 @@ chmod +x setup-repository.sh
 - Check that status check names match CI job names
 - Verify that required contexts exist
 
+#### Status Checks Not Appearing
+- Ensure the workflow names in `.github/workflows/ci.yml` match the required status check names
+- Verify workflows are running successfully
+- Check Actions permissions
+
 #### CI/CD Not Triggering
 - Check Actions permissions
 - Verify workflow file syntax
 - Ensure secrets are properly configured
 
 #### Code Owners Not Working
-- Verify CODEOWNERS file syntax
+- Verify `.github/CODEOWNERS` file exists and is properly formatted
 - Ensure code owners have repository access
 - Check that file paths are correct
+
+#### Release Detection Not Working
+- Check that branch names follow exact pattern `release/vX.Y.Z` or `hotfix/vX.Y.Z`
+- Verify merge commit messages contain the expected pattern
+- Ensure the auto-finalize-release workflow is enabled
+
+#### Admins Can Bypass Rules
+- Ensure "Do not allow bypassing the above settings" is enabled for critical branches
+- Review admin permissions and consider using teams instead
+
+### Emergency Override
+
+In case of emergency, repository admins can temporarily:
+
+1. Disable branch protection
+2. Make emergency changes
+3. Re-enable protection immediately
+
+**⚠️ Warning:** This should only be used in critical situations and must be documented.
 
 ## 📞 Support
 
@@ -235,6 +320,17 @@ For setup issues:
 - Contact repository maintainers
 - Create issue with "infrastructure" label
 
+## 🔒 Security Benefits
+
+This branch protection setup provides:
+
+- **No False Positives:** Only release/hotfix branch merges trigger automation
+- **Human Oversight:** Every release requires PR review and approval
+- **CI Validation:** All tests must pass before merge is possible
+- **Audit Trail:** Complete GitHub audit log of all activities
+- **Rollback Safety:** Easy to revert if issues discovered
+- **Admin Enforcement:** Even repository admins cannot bypass protection rules
+
 ---
 
-**Note**: This setup ensures proper Git Flow implementation and maintains code quality standards for the open source project. 
+**Note**: This setup ensures proper Git Flow implementation, maintains code quality standards, and provides secure automated release detection for the open source project. 

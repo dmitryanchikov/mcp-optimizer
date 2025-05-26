@@ -2,7 +2,7 @@
   "mcpServers": {
     "mcp-optimizer": {
       "command": "python",
-      "args": ["-m", "mcp_optimizer.server"],
+      "args": ["main.py"],
       "env": {
         "SOLVER_TIMEOUT": "300",
         "MAX_ITERATIONS": "10000",
@@ -25,7 +25,7 @@
     },
     "mcp-optimizer-production": {
       "command": "python",
-      "args": ["-m", "mcp_optimizer.server"],
+      "args": ["main.py"],
       "env": {
         "SOLVER_TIMEOUT": "1800",
         "MAX_ITERATIONS": "100000",
@@ -37,33 +37,5 @@
         "METRICS_PORT": "9090"
       }
     }
-  },
-  "globalShortcuts": {
-    "optimize": "Ctrl+Shift+O",
-    "solve_linear": "Ctrl+Shift+L",
-    "solve_assignment": "Ctrl+Shift+A",
-    "solve_transportation": "Ctrl+Shift+T",
-    "solve_knapsack": "Ctrl+Shift+K",
-    "solve_routing": "Ctrl+Shift+R",
-    "solve_portfolio": "Ctrl+Shift+P"
-  },
-  "ui": {
-    "theme": "dark",
-    "showOptimizationResults": true,
-    "autoSaveResults": true,
-    "resultFormat": "detailed"
-  },
-  "optimization": {
-    "defaultSolver": "mcp-optimizer",
-    "fallbackSolver": "mcp-optimizer-local",
-    "autoRetry": true,
-    "maxRetries": 3,
-    "retryDelay": 5000
-  },
-  "logging": {
-    "level": "INFO",
-    "file": "~/.claude/mcp-optimizer.log",
-    "maxSize": "10MB",
-    "maxFiles": 5
   }
 } 
