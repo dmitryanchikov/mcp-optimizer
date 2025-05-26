@@ -167,6 +167,9 @@ cython_debug/
 # Ruff cache
 .ruff_cache/
 
+# Bandit security reports
+bandit-report.json
+
 # uv
 # IMPORTANT: uv.lock should be committed to version control for reproducible builds
 # Only ignore the virtual environment directory (.venv is already ignored above)
