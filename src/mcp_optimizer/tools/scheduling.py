@@ -198,7 +198,7 @@ def solve_job_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
         solver.parameters.max_time_in_seconds = scheduling_input.time_limit_seconds
         status = solver.Solve(model)
 
-        if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
+        if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:  # type: ignore[comparison-overlap]
             # Extract solution
             schedule = []
             job_completion_times = {}
@@ -241,7 +241,7 @@ def solve_job_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
 
             return OptimizationResult(
                 status=OptimizationStatus.OPTIMAL
-                if status == cp_model.OPTIMAL
+                if status == cp_model.OPTIMAL  # type: ignore[comparison-overlap]
                 else OptimizationStatus.FEASIBLE,
                 objective_value=float(
                     makespan  # type: ignore
@@ -267,7 +267,7 @@ def solve_job_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
             status_name = solver.StatusName(status)
             return OptimizationResult(
                 status=OptimizationStatus.INFEASIBLE
-                if status == cp_model.INFEASIBLE
+                if status == cp_model.INFEASIBLE  # type: ignore[comparison-overlap]
                 else OptimizationStatus.ERROR,
                 error_message=f"No solution found: {status_name}",
                 execution_time=time.time() - start_time,
@@ -417,7 +417,7 @@ def solve_shift_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
         solver.parameters.max_time_in_seconds = scheduling_input.time_limit_seconds
         status = solver.Solve(model)
 
-        if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
+        if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:  # type: ignore[comparison-overlap]
             # Extract solution
             schedule = []
             employee_stats = {}
@@ -480,7 +480,7 @@ def solve_shift_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
 
             return OptimizationResult(
                 status=OptimizationStatus.OPTIMAL
-                if status == cp_model.OPTIMAL
+                if status == cp_model.OPTIMAL  # type: ignore[comparison-overlap]
                 else OptimizationStatus.FEASIBLE,
                 objective_value=float(solver.ObjectiveValue()),
                 variables={
@@ -504,7 +504,7 @@ def solve_shift_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
             status_name = solver.StatusName(status)
             return OptimizationResult(
                 status=OptimizationStatus.INFEASIBLE
-                if status == cp_model.INFEASIBLE
+                if status == cp_model.INFEASIBLE  # type: ignore[comparison-overlap]
                 else OptimizationStatus.ERROR,
                 error_message=f"No solution found: {status_name}",
                 execution_time=time.time() - start_time,
