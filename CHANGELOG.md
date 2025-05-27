@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.4] - 2025-05-28
 
+### Fixed
+- **CI/CD Pipeline**: Resolved PyPI publishing failures and simplified pipeline architecture
+  - Fixed OIDC token retrieval failures (503 errors) by splitting publishing into separate jobs
+
+### Changed
+- **Pipeline Architecture**: Refactored release process for better reliability and maintainability
+  - Split PyPI and Docker publishing into separate parallel jobs (`pypi-publish`, `docker-publish`)
+  - Simplified `release` job to focus on core release tasks (tagging, GitHub Release creation)
+  - Removed complex error handling and retry mechanisms in favor of manual job re-runs
+  - Enhanced workflow summary to reflect new job structure and parallel execution
+- **Job Dependencies**: Optimized job execution flow
+  - `pypi-publish` and `docker-publish` jobs run in parallel after `release` completion
+  - `merge-back` job runs independently of publishing jobs
+  - Failed publishing jobs can be re-run individually without affecting other jobs
+
 ## [0.3.3] - 2025-05-28
 
 ### Fixed
