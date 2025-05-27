@@ -25,7 +25,12 @@ def get_current_version() -> str:
     """Get current version from pyproject.toml."""
     pyproject_path = Path("pyproject.toml")
     content = pyproject_path.read_text()
-    match = re.search(r'version = "([^"]+)"', content)
+    # Extract version from [project] section only
+    project_section = re.search(r'\[project\](.*?)(?=\n\[|\Z)', content, re.DOTALL)
+    if not project_section:
+        raise ValueError("Could not find [project] section in pyproject.toml")
+    
+    match = re.search(r'version = "([^"]+)"', project_section.group(1))
     if not match:
         raise ValueError("Could not find version in pyproject.toml")
     return match.group(1)
@@ -50,7 +55,10 @@ def update_version(new_version: str) -> None:
 
 
 def update_changelog(version: str) -> None:
-    """Update CHANGELOG.md with release date."""
+    """Update CHANGELOG.md with release date.
+    
+    For details on changelog format, see Changelog Guidelines in CONTRIBUTING.md
+    """
     changelog_path = Path("CHANGELOG.md")
     if not changelog_path.exists():
         print("⚠️ CHANGELOG.md not found, skipping changelog update")
@@ -212,6 +220,10 @@ def main():
 
     args = parser.parse_args()
 
+    # Check git status
+    if not check_git_status():
+        sys.exit(1)
+
     # Determine version
     current_version = get_current_version()
     
@@ -241,6 +253,14 @@ def main():
     if args.type and not validate_version_increment(current_version, new_version, args.type):
         sys.exit(1)
 
+    # Run tests
+    if not args.skip_tests:
+        if not run_tests():
+            print("❌ Tests failed, aborting release")
+            sys.exit(1)
+    else:
+        print("⚠️ Skipping tests")
+
     if args.dry_run:
         print("🔍 DRY RUN - No changes will be made")
         if args.hotfix:
@@ -265,10 +285,6 @@ def main():
             print("8. Create PR to main for final release")
         return
 
-    # Check git status
-    if not check_git_status():
-        sys.exit(1)
-
     # Branch creation logic
     if args.hotfix:
         print("🚨 Creating HOTFIX release")
@@ -282,14 +298,6 @@ def main():
     # Update version and changelog
     update_version(new_version)
     update_changelog(new_version)
-
-    # Run tests
-    if not args.skip_tests:
-        if not run_tests():
-            print("❌ Tests failed, aborting release")
-            sys.exit(1)
-    else:
-        print("⚠️ Skipping tests")
 
     # Commit changes
     commit_release_changes(new_version)

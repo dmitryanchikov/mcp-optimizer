@@ -18,50 +18,146 @@ jobs:
         fetch-depth: 0
         token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Detect release merge
+    - name: Detect release merge - Git-based detection
       id: detect_release
       run: |
-        echo "🔍 Checking for release branch merge..."
+        echo "🔍 Analyzing git history for release merge..."
         
-        # Get the merge commit message
-        MERGE_MSG="${{ github.event.head_commit.message }}"
-        echo "📝 Commit message: $MERGE_MSG"
+        # Получаем информацию о текущем коммите
+        CURRENT_COMMIT="${{ github.sha }}"
+        echo "📝 Current commit: $CURRENT_COMMIT"
         
-        # Check for merge from release/* branch
-        RELEASE_VERSION=$(echo "$MERGE_MSG" | grep -oP "Merge pull request #\d+ from [^/]+/release/v\K[0-9]+\.[0-9]+\.[0-9]+" || echo "")
+        # Проверяем, является ли это merge commit
+        PARENT_COUNT=$(git rev-list --count --parents -n 1 $CURRENT_COMMIT | awk '{print NF-1}')
+        echo "👥 Parent count: $PARENT_COUNT"
         
-        # Check for merge from hotfix/* branch  
-        HOTFIX_VERSION=$(echo "$MERGE_MSG" | grep -oP "Merge pull request #\d+ from [^/]+/hotfix/v\K[0-9]+\.[0-9]+\.[0-9]+" || echo "")
-        
-        # Determine release type and version
         IS_RELEASE="false"
         RELEASE_VERSION=""
         RELEASE_TYPE=""
+        DETECTION_METHOD=""
         
-        if [ -n "$RELEASE_VERSION" ]; then
-          IS_RELEASE="true"
-          RELEASE_TYPE="regular"
-          echo "✅ Regular release detected: v$RELEASE_VERSION"
-        elif [ -n "$HOTFIX_VERSION" ]; then
-          IS_RELEASE="true"
-          RELEASE_VERSION="$HOTFIX_VERSION"
-          RELEASE_TYPE="hotfix"
-          echo "✅ Hotfix release detected: v$RELEASE_VERSION"
-        else
-          echo "ℹ️ No release branch merge detected, skipping finalization"
+        if [ "$PARENT_COUNT" -ge 2 ]; then
+          echo "🔀 This is a merge commit, analyzing merge..."
+          
+          # Получаем второй parent (merged branch)
+          MERGED_BRANCH_COMMIT=$(git rev-parse ${CURRENT_COMMIT}^2)
+          
+          # Ищем release/hotfix ветки в истории merged commit
+          RELEASE_BRANCHES=$(git branch -r --contains $MERGED_BRANCH_COMMIT | grep -E "(release|hotfix)/v[0-9]+\.[0-9]+\.[0-9]+" || echo "")
+          
+          if [ -n "$RELEASE_BRANCHES" ]; then
+            echo "✅ Found release/hotfix branches: $RELEASE_BRANCHES"
+            
+            # Извлекаем версию из имени ветки
+            RELEASE_VERSION=$(echo "$RELEASE_BRANCHES" | grep -oE "v[0-9]+\.[0-9]+\.[0-9]+" | head -1 | sed 's/v//')
+            
+            if echo "$RELEASE_BRANCHES" | grep -q "release/"; then
+              RELEASE_TYPE="regular"
+              DETECTION_METHOD="git-branch-analysis"
+            elif echo "$RELEASE_BRANCHES" | grep -q "hotfix/"; then
+              RELEASE_TYPE="hotfix"
+              DETECTION_METHOD="git-branch-analysis"
+            fi
+            
+            IS_RELEASE="true"
+            echo "✅ Detected $RELEASE_TYPE release: v$RELEASE_VERSION via $DETECTION_METHOD"
+          fi
         fi
         
-        # Validate version format
+        # Fallback 1: Анализ изменений версии в pyproject.toml
+        if [ "$IS_RELEASE" = "false" ]; then
+          echo "🔍 Fallback: Checking version changes in pyproject.toml..."
+          
+          # Сравниваем версию в текущем коммите с предыдущим (только в секции [project])
+          CURRENT_VERSION=$(git show HEAD:pyproject.toml | sed -n '/^\[project\]/,/^\[/p' | grep -oP 'version = "\K[^"]+' | head -1 || echo "")
+          PREVIOUS_VERSION=$(git show HEAD~1:pyproject.toml | sed -n '/^\[project\]/,/^\[/p' | grep -oP 'version = "\K[^"]+' | head -1 || echo "")
+          
+          if [ -n "$CURRENT_VERSION" ] && [ -n "$PREVIOUS_VERSION" ] && [ "$CURRENT_VERSION" != "$PREVIOUS_VERSION" ]; then
+            echo "📈 Version changed: $PREVIOUS_VERSION → $CURRENT_VERSION"
+            
+                                    # Проверяем, что новая версия больше предыдущей (семантическое версионирование)
+            if python3 -c "import sys; from packaging import version; sys.exit(0 if version.parse('$CURRENT_VERSION') > version.parse('$PREVIOUS_VERSION') else 1)"; then
+              RELEASE_VERSION="$CURRENT_VERSION"
+              RELEASE_TYPE="regular"
+              DETECTION_METHOD="version-change-analysis"
+              IS_RELEASE="true"
+              echo "✅ Detected release via version bump: v$RELEASE_VERSION"
+            fi
+          fi
+        fi
+        
+        # Fallback 2: Анализ commit message (legacy support)
+        if [ "$IS_RELEASE" = "false" ]; then
+          echo "🔍 Fallback: Analyzing commit messages..."
+          
+          MERGE_MSG="${{ github.event.head_commit.message }}"
+          echo "📝 Commit message: $MERGE_MSG"
+          
+          # Поддержка разных форматов мержа
+          RELEASE_VERSION_MSG=$(echo "$MERGE_MSG" | grep -oP "(Release|release)/v\K[0-9]+\.[0-9]+\.[0-9]+" || echo "")
+          HOTFIX_VERSION_MSG=$(echo "$MERGE_MSG" | grep -oP "(Hotfix|hotfix)/v\K[0-9]+\.[0-9]+\.[0-9]+" || echo "")
+          
+          # Также поддержка стандартного GitHub формата
+          if [ -z "$RELEASE_VERSION_MSG" ]; then
+            RELEASE_VERSION_MSG=$(echo "$MERGE_MSG" | grep -oP "Merge pull request #\d+ from [^/]+/release/v\K[0-9]+\.[0-9]+\.[0-9]+" || echo "")
+          fi
+          
+          if [ -z "$HOTFIX_VERSION_MSG" ]; then
+            HOTFIX_VERSION_MSG=$(echo "$MERGE_MSG" | grep -oP "Merge pull request #\d+ from [^/]+/hotfix/v\K[0-9]+\.[0-9]+\.[0-9]+" || echo "")
+          fi
+          
+          if [ -n "$RELEASE_VERSION_MSG" ]; then
+            IS_RELEASE="true"
+            RELEASE_VERSION="$RELEASE_VERSION_MSG"
+            RELEASE_TYPE="regular"
+            DETECTION_METHOD="commit-message-analysis"
+            echo "✅ Detected regular release via commit message: v$RELEASE_VERSION"
+          elif [ -n "$HOTFIX_VERSION_MSG" ]; then
+            IS_RELEASE="true"
+            RELEASE_VERSION="$HOTFIX_VERSION_MSG"
+            RELEASE_TYPE="hotfix"
+            DETECTION_METHOD="commit-message-analysis"
+            echo "✅ Detected hotfix release via commit message: v$RELEASE_VERSION"
+          fi
+        fi
+        
+        # Валидация и финальные проверки
         if [ "$IS_RELEASE" = "true" ]; then
+          echo "🔍 Validating detected release..."
+          
+          # Проверка формата версии
           if [[ ! "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "❌ Invalid version format: $RELEASE_VERSION"
             IS_RELEASE="false"
           fi
+          
+          # Проверка, что тег не существует (аналогично джобе release)
+          if [ "$IS_RELEASE" = "true" ] && git tag -l | grep -q "^v$RELEASE_VERSION$"; then
+            echo "❌ Tag v$RELEASE_VERSION already exists"
+            IS_RELEASE="false"
+          fi
+          
+          # Проверка, что мы на main ветке
+          CURRENT_BRANCH=$(git branch --show-current || git rev-parse --abbrev-ref HEAD)
+          if [ "$IS_RELEASE" = "true" ] && [ "$CURRENT_BRANCH" != "main" ]; then
+            echo "❌ Not on main branch, currently on: $CURRENT_BRANCH"
+            IS_RELEASE="false"
+          fi
+        fi
+        
+        if [ "$IS_RELEASE" = "false" ]; then
+          echo "ℹ️ No release detected, skipping finalization"
+        else
+          echo "🎉 Release detection successful!"
+          echo "   Version: v$RELEASE_VERSION"
+          echo "   Type: $RELEASE_TYPE"
+          echo "   Method: $DETECTION_METHOD"
         fi
         
         echo "is_release=$IS_RELEASE" >> $GITHUB_OUTPUT
         echo "version=$RELEASE_VERSION" >> $GITHUB_OUTPUT
         echo "release_type=$RELEASE_TYPE" >> $GITHUB_OUTPUT
+        echo "detection_method=$DETECTION_METHOD" >> $GITHUB_OUTPUT
 
     - name: Install uv
       if: steps.detect_release.outputs.is_release == 'true'
@@ -77,6 +173,18 @@ jobs:
       if: steps.detect_release.outputs.is_release == 'true'
       run: uv sync --all-extras --dev
 
+    - name: Install packaging for version comparison
+      run: pip install packaging
+
+    - name: Install GitHub CLI
+      if: steps.detect_release.outputs.is_release == 'true'
+      run: |
+        # Install GitHub CLI for issue creation in case of merge conflicts
+        curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+        sudo apt update
+        sudo apt install gh -y
+
     - name: Configure Git
       if: steps.detect_release.outputs.is_release == 'true'
       run: |
@@ -88,8 +196,8 @@ jobs:
       run: |
         echo "🔍 Validating release readiness..."
         
-        # Check that version in pyproject.toml matches detected version
-        PYPROJECT_VERSION=$(grep -oP 'version = "\K[^"]+' pyproject.toml)
+        # Check that version in pyproject.toml matches detected version (only in [project] section)
+        PYPROJECT_VERSION=$(sed -n '/^\[project\]/,/^\[/p' pyproject.toml | grep -oP 'version = "\K[^"]+' | head -1)
         if [ "$PYPROJECT_VERSION" != "${{ steps.detect_release.outputs.version }}" ]; then
           echo "❌ Version mismatch: pyproject.toml has $PYPROJECT_VERSION, detected ${{ steps.detect_release.outputs.version }}"
           exit 1
@@ -127,6 +235,7 @@ jobs:
       run: |
         RELEASE_TYPE="${{ steps.detect_release.outputs.release_type }}"
         VERSION="${{ steps.detect_release.outputs.version }}"
+        DETECTION_METHOD="${{ steps.detect_release.outputs.detection_method }}"
         
         if [ "$RELEASE_TYPE" = "hotfix" ]; then
           EMOJI="🚨"
@@ -137,6 +246,10 @@ jobs:
         fi
         
         echo "## $EMOJI $TYPE_TEXT v$VERSION Auto-Finalized!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🔍 Detection Details" >> $GITHUB_STEP_SUMMARY
+        echo "- **Detection Method**: $DETECTION_METHOD" >> $GITHUB_STEP_SUMMARY
+        echo "- **Release Type**: $RELEASE_TYPE" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📦 Release Artifacts" >> $GITHUB_STEP_SUMMARY
         echo "- **PyPI Package**: https://pypi.org/project/mcp-optimizer/$VERSION/" >> $GITHUB_STEP_SUMMARY
