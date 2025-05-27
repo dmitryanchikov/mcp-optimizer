@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3] - 2025-05-28
+
+### Fixed
+- **CI/CD Pipeline**: Fixed PyPI publishing with Trusted Publisher configuration
+  - Eliminated unnecessary `github.ref_type != 'tag'` condition after removing tag triggers
+- **Code Quality**: Improved workflow maintainability
+  - Translated all Russian comments to English in CI/CD pipeline
+  - Enhanced code readability and international collaboration support
+
+### Changed
+- **CI/CD Optimization**: Streamlined build job conditions
+  - Removed obsolete tag-related checks from build job
+  - Simplified workflow logic after tag trigger removal
+
 ## [0.3.2] - 2025-05-27
 
 ### Fixed

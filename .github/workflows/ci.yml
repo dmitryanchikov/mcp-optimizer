@@ -93,7 +93,6 @@ jobs:
   build:
     needs: [test, security]
     runs-on: ubuntu-latest
-    if: github.ref_type != 'tag'  # Все ветки кроме тегов
     permissions:
       contents: read
       packages: write
@@ -139,7 +138,7 @@ jobs:
   release-candidate:
     needs: [test, security, build]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/heads/release/')  # Только для release/* веток
+    if: startsWith(github.ref, 'refs/heads/release/')  # Only for release/* branches
     permissions:
       contents: write
       packages: write
@@ -228,11 +227,11 @@ jobs:
       run: |
         echo "🔍 Analyzing git history for release merge..."
         
-        # Получаем информацию о текущем коммите
+        # Get current commit information
         CURRENT_COMMIT="${{ github.sha }}"
         echo "📝 Current commit: $CURRENT_COMMIT"
         
-        # Проверяем, является ли это merge commit
+        # Check if this is a merge commit
         PARENT_COUNT=$(git rev-list --count --parents -n 1 $CURRENT_COMMIT | awk '{print NF-1}')
         echo "👥 Parent count: $PARENT_COUNT"
         
@@ -241,10 +240,10 @@ jobs:
         RELEASE_TYPE=""
         DETECTION_METHOD=""
         
-        # Если force_release включен, пропускаем детекцию
+        # If force_release is enabled, skip detection
         if [ "${{ inputs.force_release }}" = "true" ]; then
           echo "🚨 Force release mode enabled"
-          # Получаем версию из pyproject.toml
+          # Get version from pyproject.toml
           CURRENT_VERSION=$(sed -n '/^\[project\]/,/^\[/p' pyproject.toml | grep -oP 'version = "\K[^"]+' | head -1)
           if [ -n "$CURRENT_VERSION" ]; then
             IS_RELEASE="true"
@@ -256,16 +255,16 @@ jobs:
         elif [ "$PARENT_COUNT" -ge 2 ]; then
           echo "🔀 This is a merge commit, analyzing merge..."
           
-          # Получаем второй parent (merged branch)
+          # Get second parent (merged branch)
           MERGED_BRANCH_COMMIT=$(git rev-parse ${CURRENT_COMMIT}^2)
           
-          # Ищем release/hotfix ветки в истории merged commit
+          # Look for release/hotfix branches in merged commit history
           RELEASE_BRANCHES=$(git branch -r --contains $MERGED_BRANCH_COMMIT | grep -E "(release|hotfix)/v[0-9]+\.[0-9]+\.[0-9]+" || echo "")
           
           if [ -n "$RELEASE_BRANCHES" ]; then
             echo "✅ Found release/hotfix branches: $RELEASE_BRANCHES"
             
-            # Извлекаем версию из имени ветки
+            # Extract version from branch name
             RELEASE_VERSION=$(echo "$RELEASE_BRANCHES" | grep -oE "v[0-9]+\.[0-9]+\.[0-9]+" | head -1 | sed 's/v//')
             
             if echo "$RELEASE_BRANCHES" | grep -q "release/"; then
@@ -281,83 +280,83 @@ jobs:
           fi
         fi
         
-                 # Fallback 1: Анализ изменений версии в pyproject.toml
-         if [ "$IS_RELEASE" = "false" ]; then
-           echo "🔍 Fallback: Checking version changes in pyproject.toml..."
-           
-           # Сравниваем версию в текущем коммите с предыдущим
-           CURRENT_VERSION=$(git show HEAD:pyproject.toml | sed -n '/^\[project\]/,/^\[/p' | grep -oP 'version = "\K[^"]+' | head -1 || echo "")
-           PREVIOUS_VERSION=$(git show HEAD~1:pyproject.toml | sed -n '/^\[project\]/,/^\[/p' | grep -oP 'version = "\K[^"]+' | head -1 || echo "")
-           
-           if [ -n "$CURRENT_VERSION" ] && [ -n "$PREVIOUS_VERSION" ] && [ "$CURRENT_VERSION" != "$PREVIOUS_VERSION" ]; then
-             echo "📈 Version changed: $PREVIOUS_VERSION → $CURRENT_VERSION"
-             
-             # Устанавливаем packaging для сравнения версий
-             pip install packaging
-             
-             # Проверяем, что новая версия больше предыдущей
-             if python3 -c "import sys; from packaging import version; sys.exit(0 if version.parse('$CURRENT_VERSION') > version.parse('$PREVIOUS_VERSION') else 1)" 2>/dev/null; then
-               RELEASE_VERSION="$CURRENT_VERSION"
-               RELEASE_TYPE="regular"
-               DETECTION_METHOD="version-change-analysis"
-               IS_RELEASE="true"
-               echo "✅ Detected release via version bump: v$RELEASE_VERSION"
-             fi
-           fi
-         fi
-         
-         # Fallback 2: Анализ commit message (legacy support)
-         if [ "$IS_RELEASE" = "false" ]; then
-           echo "🔍 Fallback: Analyzing commit messages..."
-           
-           MERGE_MSG="${{ github.event.head_commit.message }}"
-           echo "📝 Commit message: $MERGE_MSG"
-           
-           # Поддержка разных форматов мержа
-           RELEASE_VERSION_MSG=$(echo "$MERGE_MSG" | grep -oP "(Release|release)/v\K[0-9]+\.[0-9]+\.[0-9]+" || echo "")
-           HOTFIX_VERSION_MSG=$(echo "$MERGE_MSG" | grep -oP "(Hotfix|hotfix)/v\K[0-9]+\.[0-9]+\.[0-9]+" || echo "")
-           
-           # Также поддержка стандартного GitHub формата
-           if [ -z "$RELEASE_VERSION_MSG" ]; then
-             RELEASE_VERSION_MSG=$(echo "$MERGE_MSG" | grep -oP "Merge pull request #\d+ from [^/]+/release/v\K[0-9]+\.[0-9]+\.[0-9]+" || echo "")
-           fi
-           
-           if [ -z "$HOTFIX_VERSION_MSG" ]; then
-             HOTFIX_VERSION_MSG=$(echo "$MERGE_MSG" | grep -oP "Merge pull request #\d+ from [^/]+/hotfix/v\K[0-9]+\.[0-9]+\.[0-9]+" || echo "")
-           fi
-           
-           if [ -n "$RELEASE_VERSION_MSG" ]; then
-             IS_RELEASE="true"
-             RELEASE_VERSION="$RELEASE_VERSION_MSG"
-             RELEASE_TYPE="regular"
-             DETECTION_METHOD="commit-message-analysis"
-             echo "✅ Detected regular release via commit message: v$RELEASE_VERSION"
-           elif [ -n "$HOTFIX_VERSION_MSG" ]; then
-             IS_RELEASE="true"
-             RELEASE_VERSION="$HOTFIX_VERSION_MSG"
-             RELEASE_TYPE="hotfix"
-             DETECTION_METHOD="commit-message-analysis"
-             echo "✅ Detected hotfix release via commit message: v$RELEASE_VERSION"
-           fi
-         fi
+        # Fallback 1: Analyze version changes in pyproject.toml
+        if [ "$IS_RELEASE" = "false" ]; then
+          echo "🔍 Fallback: Checking version changes in pyproject.toml..."
+          
+          # Compare version in current commit with previous
+          CURRENT_VERSION=$(git show HEAD:pyproject.toml | sed -n '/^\[project\]/,/^\[/p' | grep -oP 'version = "\K[^"]+' | head -1 || echo "")
+          PREVIOUS_VERSION=$(git show HEAD~1:pyproject.toml | sed -n '/^\[project\]/,/^\[/p' | grep -oP 'version = "\K[^"]+' | head -1 || echo "")
+          
+          if [ -n "$CURRENT_VERSION" ] && [ -n "$PREVIOUS_VERSION" ] && [ "$CURRENT_VERSION" != "$PREVIOUS_VERSION" ]; then
+            echo "📈 Version changed: $PREVIOUS_VERSION → $CURRENT_VERSION"
+            
+            # Install packaging for version comparison
+            pip install packaging
+            
+            # Check that new version is greater than previous
+            if python3 -c "import sys; from packaging import version; sys.exit(0 if version.parse('$CURRENT_VERSION') > version.parse('$PREVIOUS_VERSION') else 1)" 2>/dev/null; then
+              RELEASE_VERSION="$CURRENT_VERSION"
+              RELEASE_TYPE="regular"
+              DETECTION_METHOD="version-change-analysis"
+              IS_RELEASE="true"
+              echo "✅ Detected release via version bump: v$RELEASE_VERSION"
+            fi
+          fi
+        fi
         
-        # Валидация и финальные проверки
+        # Fallback 2: Analyze commit message (legacy support)
+        if [ "$IS_RELEASE" = "false" ]; then
+          echo "🔍 Fallback: Analyzing commit messages..."
+          
+          MERGE_MSG="${{ github.event.head_commit.message }}"
+          echo "📝 Commit message: $MERGE_MSG"
+          
+          # Support different merge formats
+          RELEASE_VERSION_MSG=$(echo "$MERGE_MSG" | grep -oP "(Release|release)/v\K[0-9]+\.[0-9]+\.[0-9]+" || echo "")
+          HOTFIX_VERSION_MSG=$(echo "$MERGE_MSG" | grep -oP "(Hotfix|hotfix)/v\K[0-9]+\.[0-9]+\.[0-9]+" || echo "")
+          
+          # Also support standard GitHub format
+          if [ -z "$RELEASE_VERSION_MSG" ]; then
+            RELEASE_VERSION_MSG=$(echo "$MERGE_MSG" | grep -oP "Merge pull request #\d+ from [^/]+/release/v\K[0-9]+\.[0-9]+\.[0-9]+" || echo "")
+          fi
+          
+          if [ -z "$HOTFIX_VERSION_MSG" ]; then
+            HOTFIX_VERSION_MSG=$(echo "$MERGE_MSG" | grep -oP "Merge pull request #\d+ from [^/]+/hotfix/v\K[0-9]+\.[0-9]+\.[0-9]+" || echo "")
+          fi
+          
+          if [ -n "$RELEASE_VERSION_MSG" ]; then
+            IS_RELEASE="true"
+            RELEASE_VERSION="$RELEASE_VERSION_MSG"
+            RELEASE_TYPE="regular"
+            DETECTION_METHOD="commit-message-analysis"
+            echo "✅ Detected regular release via commit message: v$RELEASE_VERSION"
+          elif [ -n "$HOTFIX_VERSION_MSG" ]; then
+            IS_RELEASE="true"
+            RELEASE_VERSION="$HOTFIX_VERSION_MSG"
+            RELEASE_TYPE="hotfix"
+            DETECTION_METHOD="commit-message-analysis"
+            echo "✅ Detected hotfix release via commit message: v$RELEASE_VERSION"
+          fi
+        fi
+        
+        # Validation and final checks
         if [ "$IS_RELEASE" = "true" ]; then
           echo "🔍 Validating detected release..."
           
-          # Проверка формата версии
+          # Check version format
           if [[ ! "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "❌ Invalid version format: $RELEASE_VERSION"
             IS_RELEASE="false"
           fi
           
-          # Проверка, что тег не существует
+          # Check that tag doesn't exist
           if [ "$IS_RELEASE" = "true" ] && git tag -l | grep -q "^v$RELEASE_VERSION$"; then
             echo "❌ Tag v$RELEASE_VERSION already exists"
             IS_RELEASE="false"
           fi
           
-          # Проверка, что мы на main ветке
+          # Check that we're on main branch
           CURRENT_BRANCH=$(git branch --show-current || git rev-parse --abbrev-ref HEAD)
           if [ "$IS_RELEASE" = "true" ] && [ "$CURRENT_BRANCH" != "main" ]; then
             echo "❌ Not on main branch, currently on: $CURRENT_BRANCH"
@@ -418,8 +417,6 @@ jobs:
     - name: Publish to PyPI
       if: steps.detect_release.outputs.is_release == 'true'
       uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        password: ${{ secrets.PYPI_API_TOKEN }}
 
     - name: Set up Docker Buildx for release
       if: steps.detect_release.outputs.is_release == 'true'
