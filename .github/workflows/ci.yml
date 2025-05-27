@@ -2,9 +2,19 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
-    tags: [ 'v*' ]
+    branches: [ main, develop, 'feature/*', 'release/*', 'hotfix/*' ]
   workflow_dispatch:
+    inputs:
+      force_release:
+        description: 'Force release creation (emergency)'
+        required: false
+        default: false
+        type: boolean
+      skip_tests:
+        description: 'Skip tests (emergency only)'
+        required: false
+        default: false
+        type: boolean
 
 env:
   REGISTRY: ghcr.io
@@ -13,6 +23,7 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
+    if: ${{ !inputs.skip_tests }}
     strategy:
       matrix:
         python-version: ["3.11", "3.12"]
@@ -51,6 +62,7 @@ jobs:
 
   security:
     runs-on: ubuntu-latest
+    if: ${{ !inputs.skip_tests }}
     steps:
     - uses: actions/checkout@v4
 
@@ -81,7 +93,7 @@ jobs:
   build:
     needs: [test, security]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')
+    if: github.ref_type != 'tag'  # Все ветки кроме тегов
     permissions:
       contents: read
       packages: write
@@ -110,6 +122,8 @@ jobs:
           type=sha,prefix={{branch}}-
           type=raw,value=latest,enable={{is_default_branch}}
           type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
+          type=match,pattern=release/v(.*),group=1,suffix=-rc
+          type=match,pattern=hotfix/v(.*),group=1,suffix=-hotfix
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
@@ -122,13 +136,13 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
-  release:
-    needs: [test, security]
+  release-candidate:
+    needs: [test, security, build]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') && github.ref_type == 'tag'
+    if: startsWith(github.ref, 'refs/heads/release/')  # Только для release/* веток
     permissions:
       contents: write
-      id-token: write
+      packages: write
 
     steps:
     - name: Checkout repository
@@ -145,18 +159,474 @@ jobs:
     - name: Install dependencies
       run: uv sync --all-extras --dev
 
+    - name: Extract version from branch
+      id: version
+      run: |
+        BRANCH_NAME=${GITHUB_REF#refs/heads/release/}
+        VERSION=${BRANCH_NAME#v}
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "rc_version=${VERSION}-rc.${GITHUB_RUN_NUMBER}" >> $GITHUB_OUTPUT
+
+    - name: Update version for RC
+      run: |
+        sed -i 's/version = ".*"/version = "${{ steps.version.outputs.rc_version }}"/' pyproject.toml
+
     - name: Build package
       run: uv build
 
+    - name: Create Release Candidate Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ steps.version.outputs.rc_version }}
+        name: Release Candidate v${{ steps.version.outputs.rc_version }}
+        files: dist/*
+        generate_release_notes: true
+        draft: false
+        prerelease: true
+        body: |
+          🚀 **Release Candidate for v${{ steps.version.outputs.version }}**
+          
+          This is a release candidate build from the `release/v${{ steps.version.outputs.version }}` branch.
+          
+          **⚠️ This is a pre-release version intended for testing purposes only.**
+          
+          Please test this release candidate and report any issues before the final release.
+          
+          **Installation:**
+          ```bash
+          pip install mcp-optimizer==${{ steps.version.outputs.rc_version }}
+          ```
+          
+          **Docker:**
+          ```bash
+          docker pull ghcr.io/dmitryanchikov/mcp-optimizer:${{ steps.version.outputs.version }}-rc
+          ```
+
+  release:
+    needs: [test, security, build]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || inputs.force_release
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+      issues: write
+      pull-requests: write
+    outputs:
+      is_release: ${{ steps.detect_release.outputs.is_release }}
+      version: ${{ steps.detect_release.outputs.version }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Detect release merge
+      id: detect_release
+      run: |
+        echo "🔍 Analyzing git history for release merge..."
+        
+        # Получаем информацию о текущем коммите
+        CURRENT_COMMIT="${{ github.sha }}"
+        echo "📝 Current commit: $CURRENT_COMMIT"
+        
+        # Проверяем, является ли это merge commit
+        PARENT_COUNT=$(git rev-list --count --parents -n 1 $CURRENT_COMMIT | awk '{print NF-1}')
+        echo "👥 Parent count: $PARENT_COUNT"
+        
+        IS_RELEASE="false"
+        RELEASE_VERSION=""
+        RELEASE_TYPE=""
+        DETECTION_METHOD=""
+        
+        # Если force_release включен, пропускаем детекцию
+        if [ "${{ inputs.force_release }}" = "true" ]; then
+          echo "🚨 Force release mode enabled"
+          # Получаем версию из pyproject.toml
+          CURRENT_VERSION=$(sed -n '/^\[project\]/,/^\[/p' pyproject.toml | grep -oP 'version = "\K[^"]+' | head -1)
+          if [ -n "$CURRENT_VERSION" ]; then
+            IS_RELEASE="true"
+            RELEASE_VERSION="$CURRENT_VERSION"
+            RELEASE_TYPE="emergency"
+            DETECTION_METHOD="force-release"
+            echo "✅ Force release: v$RELEASE_VERSION"
+          fi
+        elif [ "$PARENT_COUNT" -ge 2 ]; then
+          echo "🔀 This is a merge commit, analyzing merge..."
+          
+          # Получаем второй parent (merged branch)
+          MERGED_BRANCH_COMMIT=$(git rev-parse ${CURRENT_COMMIT}^2)
+          
+          # Ищем release/hotfix ветки в истории merged commit
+          RELEASE_BRANCHES=$(git branch -r --contains $MERGED_BRANCH_COMMIT | grep -E "(release|hotfix)/v[0-9]+\.[0-9]+\.[0-9]+" || echo "")
+          
+          if [ -n "$RELEASE_BRANCHES" ]; then
+            echo "✅ Found release/hotfix branches: $RELEASE_BRANCHES"
+            
+            # Извлекаем версию из имени ветки
+            RELEASE_VERSION=$(echo "$RELEASE_BRANCHES" | grep -oE "v[0-9]+\.[0-9]+\.[0-9]+" | head -1 | sed 's/v//')
+            
+            if echo "$RELEASE_BRANCHES" | grep -q "release/"; then
+              RELEASE_TYPE="regular"
+              DETECTION_METHOD="git-branch-analysis"
+            elif echo "$RELEASE_BRANCHES" | grep -q "hotfix/"; then
+              RELEASE_TYPE="hotfix"
+              DETECTION_METHOD="git-branch-analysis"
+            fi
+            
+            IS_RELEASE="true"
+            echo "✅ Detected $RELEASE_TYPE release: v$RELEASE_VERSION via $DETECTION_METHOD"
+          fi
+        fi
+        
+                 # Fallback 1: Анализ изменений версии в pyproject.toml
+         if [ "$IS_RELEASE" = "false" ]; then
+           echo "🔍 Fallback: Checking version changes in pyproject.toml..."
+           
+           # Сравниваем версию в текущем коммите с предыдущим
+           CURRENT_VERSION=$(git show HEAD:pyproject.toml | sed -n '/^\[project\]/,/^\[/p' | grep -oP 'version = "\K[^"]+' | head -1 || echo "")
+           PREVIOUS_VERSION=$(git show HEAD~1:pyproject.toml | sed -n '/^\[project\]/,/^\[/p' | grep -oP 'version = "\K[^"]+' | head -1 || echo "")
+           
+           if [ -n "$CURRENT_VERSION" ] && [ -n "$PREVIOUS_VERSION" ] && [ "$CURRENT_VERSION" != "$PREVIOUS_VERSION" ]; then
+             echo "📈 Version changed: $PREVIOUS_VERSION → $CURRENT_VERSION"
+             
+             # Устанавливаем packaging для сравнения версий
+             pip install packaging
+             
+             # Проверяем, что новая версия больше предыдущей
+             if python3 -c "import sys; from packaging import version; sys.exit(0 if version.parse('$CURRENT_VERSION') > version.parse('$PREVIOUS_VERSION') else 1)" 2>/dev/null; then
+               RELEASE_VERSION="$CURRENT_VERSION"
+               RELEASE_TYPE="regular"
+               DETECTION_METHOD="version-change-analysis"
+               IS_RELEASE="true"
+               echo "✅ Detected release via version bump: v$RELEASE_VERSION"
+             fi
+           fi
+         fi
+         
+         # Fallback 2: Анализ commit message (legacy support)
+         if [ "$IS_RELEASE" = "false" ]; then
+           echo "🔍 Fallback: Analyzing commit messages..."
+           
+           MERGE_MSG="${{ github.event.head_commit.message }}"
+           echo "📝 Commit message: $MERGE_MSG"
+           
+           # Поддержка разных форматов мержа
+           RELEASE_VERSION_MSG=$(echo "$MERGE_MSG" | grep -oP "(Release|release)/v\K[0-9]+\.[0-9]+\.[0-9]+" || echo "")
+           HOTFIX_VERSION_MSG=$(echo "$MERGE_MSG" | grep -oP "(Hotfix|hotfix)/v\K[0-9]+\.[0-9]+\.[0-9]+" || echo "")
+           
+           # Также поддержка стандартного GitHub формата
+           if [ -z "$RELEASE_VERSION_MSG" ]; then
+             RELEASE_VERSION_MSG=$(echo "$MERGE_MSG" | grep -oP "Merge pull request #\d+ from [^/]+/release/v\K[0-9]+\.[0-9]+\.[0-9]+" || echo "")
+           fi
+           
+           if [ -z "$HOTFIX_VERSION_MSG" ]; then
+             HOTFIX_VERSION_MSG=$(echo "$MERGE_MSG" | grep -oP "Merge pull request #\d+ from [^/]+/hotfix/v\K[0-9]+\.[0-9]+\.[0-9]+" || echo "")
+           fi
+           
+           if [ -n "$RELEASE_VERSION_MSG" ]; then
+             IS_RELEASE="true"
+             RELEASE_VERSION="$RELEASE_VERSION_MSG"
+             RELEASE_TYPE="regular"
+             DETECTION_METHOD="commit-message-analysis"
+             echo "✅ Detected regular release via commit message: v$RELEASE_VERSION"
+           elif [ -n "$HOTFIX_VERSION_MSG" ]; then
+             IS_RELEASE="true"
+             RELEASE_VERSION="$HOTFIX_VERSION_MSG"
+             RELEASE_TYPE="hotfix"
+             DETECTION_METHOD="commit-message-analysis"
+             echo "✅ Detected hotfix release via commit message: v$RELEASE_VERSION"
+           fi
+         fi
+        
+        # Валидация и финальные проверки
+        if [ "$IS_RELEASE" = "true" ]; then
+          echo "🔍 Validating detected release..."
+          
+          # Проверка формата версии
+          if [[ ! "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ Invalid version format: $RELEASE_VERSION"
+            IS_RELEASE="false"
+          fi
+          
+          # Проверка, что тег не существует
+          if [ "$IS_RELEASE" = "true" ] && git tag -l | grep -q "^v$RELEASE_VERSION$"; then
+            echo "❌ Tag v$RELEASE_VERSION already exists"
+            IS_RELEASE="false"
+          fi
+          
+          # Проверка, что мы на main ветке
+          CURRENT_BRANCH=$(git branch --show-current || git rev-parse --abbrev-ref HEAD)
+          if [ "$IS_RELEASE" = "true" ] && [ "$CURRENT_BRANCH" != "main" ]; then
+            echo "❌ Not on main branch, currently on: $CURRENT_BRANCH"
+            IS_RELEASE="false"
+          fi
+        fi
+        
+        if [ "$IS_RELEASE" = "false" ]; then
+          echo "ℹ️ No release detected, skipping finalization"
+        else
+          echo "🎉 Release detection successful!"
+          echo "   Version: v$RELEASE_VERSION"
+          echo "   Type: $RELEASE_TYPE"
+          echo "   Method: $DETECTION_METHOD"
+        fi
+        
+        echo "is_release=$IS_RELEASE" >> $GITHUB_OUTPUT
+        echo "version=$RELEASE_VERSION" >> $GITHUB_OUTPUT
+        echo "release_type=$RELEASE_TYPE" >> $GITHUB_OUTPUT
+        echo "detection_method=$DETECTION_METHOD" >> $GITHUB_OUTPUT
+
+    - name: Install dependencies for release
+      if: steps.detect_release.outputs.is_release == 'true'
+      run: |
+        # Install uv
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        source $HOME/.cargo/env
+        uv python install 3.12
+        uv sync --all-extras --dev
+        
+        # Install GitHub CLI
+        curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+        sudo apt update
+        sudo apt install gh -y
+
+    - name: Configure Git
+      if: steps.detect_release.outputs.is_release == 'true'
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Create release tag
+      if: steps.detect_release.outputs.is_release == 'true'
+      run: |
+        VERSION="${{ steps.detect_release.outputs.version }}"
+        TAG_NAME="v$VERSION"
+        
+        echo "🏷️ Creating release tag: $TAG_NAME"
+        git tag -a "$TAG_NAME" -m "Release $VERSION"
+        git push origin "$TAG_NAME"
+        echo "✅ Release tag $TAG_NAME created and pushed"
+
+    - name: Build package
+      if: steps.detect_release.outputs.is_release == 'true'
+      run: uv build
+
     - name: Publish to PyPI
+      if: steps.detect_release.outputs.is_release == 'true'
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         password: ${{ secrets.PYPI_API_TOKEN }}
 
+    - name: Set up Docker Buildx for release
+      if: steps.detect_release.outputs.is_release == 'true'
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry for release
+      if: steps.detect_release.outputs.is_release == 'true'
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata for release Docker
+      if: steps.detect_release.outputs.is_release == 'true'
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=semver,pattern={{version}},value=v${{ steps.detect_release.outputs.version }}
+          type=semver,pattern={{major}}.{{minor}},value=v${{ steps.detect_release.outputs.version }}
+          type=semver,pattern={{major}},value=v${{ steps.detect_release.outputs.version }}
+          type=raw,value=latest
+
+    - name: Build and push release Docker image
+      if: steps.detect_release.outputs.is_release == 'true'
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
     - name: Create GitHub Release
+      if: steps.detect_release.outputs.is_release == 'true'
       uses: softprops/action-gh-release@v2
       with:
+        tag_name: v${{ steps.detect_release.outputs.version }}
         files: dist/*
         generate_release_notes: true
         draft: false
-        prerelease: ${{ contains(github.ref, '-') }}
+        prerelease: ${{ contains(steps.detect_release.outputs.version, '-') }}
+
+    - name: Create summary
+      if: steps.detect_release.outputs.is_release == 'true'
+      run: |
+        RELEASE_TYPE="${{ steps.detect_release.outputs.release_type }}"
+        VERSION="${{ steps.detect_release.outputs.version }}"
+        DETECTION_METHOD="${{ steps.detect_release.outputs.detection_method }}"
+        
+        if [ "$RELEASE_TYPE" = "hotfix" ]; then
+          EMOJI="🚨"
+          TYPE_TEXT="Hotfix"
+        elif [ "$RELEASE_TYPE" = "emergency" ]; then
+          EMOJI="⚡"
+          TYPE_TEXT="Emergency Release"
+        else
+          EMOJI="🎉"
+          TYPE_TEXT="Release"
+        fi
+        
+        echo "## $EMOJI $TYPE_TEXT v$VERSION Auto-Finalized!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🔍 Detection Details" >> $GITHUB_STEP_SUMMARY
+        echo "- **Detection Method**: $DETECTION_METHOD" >> $GITHUB_STEP_SUMMARY
+        echo "- **Release Type**: $RELEASE_TYPE" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📦 Release Artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "- **PyPI Package**: https://pypi.org/project/mcp-optimizer/$VERSION/" >> $GITHUB_STEP_SUMMARY
+        echo "- **Docker Image**: \`ghcr.io/dmitryanchikov/mcp-optimizer:$VERSION\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **GitHub Release**: https://github.com/dmitryanchikov/mcp-optimizer/releases/tag/v$VERSION" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### ✅ Automated Actions Completed" >> $GITHUB_STEP_SUMMARY
+        echo "- [x] Created and pushed release tag" >> $GITHUB_STEP_SUMMARY
+        echo "- [x] Published to PyPI" >> $GITHUB_STEP_SUMMARY
+        echo "- [x] Built and pushed Docker image" >> $GITHUB_STEP_SUMMARY
+        echo "- [x] Created GitHub Release" >> $GITHUB_STEP_SUMMARY
+        echo "- [x] Initiated merge back to develop" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🔒 Security & Reliability" >> $GITHUB_STEP_SUMMARY
+        echo "This release was automatically detected through:" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Merge from protected release/hotfix branch" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Required PR approvals and checks" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Branch protection rules enforcement" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Version validation and consistency checks" >> $GITHUB_STEP_SUMMARY
+
+    - name: Notify completion
+      if: steps.detect_release.outputs.is_release == 'true'
+      run: |
+        RELEASE_TYPE="${{ steps.detect_release.outputs.release_type }}"
+        VERSION="${{ steps.detect_release.outputs.version }}"
+        
+        if [ "$RELEASE_TYPE" = "hotfix" ]; then
+          echo "🚨 Hotfix v$VERSION has been automatically finalized!"
+        elif [ "$RELEASE_TYPE" = "emergency" ]; then
+          echo "⚡ Emergency release v$VERSION has been automatically finalized!"
+        else
+          echo "✅ Release v$VERSION has been automatically finalized!"
+        fi
+        echo "🎉 All release artifacts have been published automatically."
+        echo ""
+        echo "📊 Monitor the release progress:"
+        echo "- GitHub Actions: https://github.com/dmitryanchikov/mcp-optimizer/actions"
+
+  merge-back:
+    needs: [release]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && needs.release.outputs.is_release == 'true' && !failure()
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Install GitHub CLI
+      run: |
+        curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+        sudo apt update
+        sudo apt install gh -y
+
+    - name: Configure Git
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Merge back to develop
+      run: |
+        VERSION="${{ needs.release.outputs.version }}"
+        echo "🔄 Creating PR to merge main back to develop for v$VERSION..."
+        
+        # Create merge branch from main
+        MERGE_BRANCH="merge/release-v$VERSION-to-develop"
+        git checkout main
+        git pull origin main
+        git checkout -b "$MERGE_BRANCH"
+        
+        # Attempt merge with develop
+        git fetch origin develop
+        
+        if git merge origin/develop --no-ff -m "chore: merge release v$VERSION back to develop"; then
+          # Merge successful
+          git push origin "$MERGE_BRANCH"
+          
+          # Create PR
+          PR_BODY="## Merge Release v$VERSION Back to Develop
+
+        This PR merges changes from release v$VERSION back to the develop branch.
+
+        ### Changes
+        - Release v$VERSION changes from main
+        - Ensures develop is up-to-date with latest release
+
+        **Auto-generated by CI/CD pipeline**"
+          
+          gh pr create \
+            --base develop \
+            --head "$MERGE_BRANCH" \
+            --title "Merge release v$VERSION back to develop" \
+            --body "$PR_BODY" \
+            --label "release,merge-back"
+          
+          echo "✅ PR created to merge main back to develop"
+        else
+          # Merge conflicts detected
+          echo "⚠️ Merge conflicts detected!"
+          
+          # Push branch with conflicts for manual resolution
+          git add .
+          git commit -m "WIP: merge conflicts for release v$VERSION" || true
+          git push origin "$MERGE_BRANCH" || true
+          
+          # Create issue for manual resolution
+          ISSUE_BODY="## Merge Conflict During Release v$VERSION
+
+        A merge conflict occurred while creating PR to merge \`main\` back to \`develop\` after release v$VERSION.
+
+        ### Resolution Steps:
+        1. \`git checkout $MERGE_BRANCH\`
+        2. Resolve conflicts in the listed files
+        3. \`git add <resolved-files>\`
+        4. \`git commit -m \"resolve: merge conflicts for release v$VERSION\"\`
+        5. \`git push origin $MERGE_BRANCH\`
+        6. Create PR: \`gh pr create --base develop --head $MERGE_BRANCH --title \"Merge release v$VERSION back to develop\"\`
+
+        ### Branch Created:
+        - **Merge Branch**: \`$MERGE_BRANCH\`
+        - **Target**: \`develop\`
+        - **Source**: \`main\` (release v$VERSION)
+
+        ### Detailed Resolution Guide:
+        See: https://github.com/dmitryanchikov/mcp-optimizer/blob/main/.github/RELEASE_PROCESS.md#merge-conflict-resolution"
+          
+          gh issue create \
+            --title "Merge conflict: release v$VERSION main→develop" \
+            --body "$ISSUE_BODY" \
+            --label "merge-conflict,release"
+          
+          echo "📝 Issue created for manual conflict resolution"
+        fi

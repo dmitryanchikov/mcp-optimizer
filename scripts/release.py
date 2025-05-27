@@ -211,11 +211,10 @@ def main():
     """Main release script with Git Flow support."""
     parser = argparse.ArgumentParser(description="Prepare MCP Optimizer release with Git Flow")
     parser.add_argument("version", nargs="?", help="New version number (e.g., 0.2.0)")
-    parser.add_argument("--type", choices=["major", "minor", "patch"], 
-                       help="Release type (auto-calculates version)")
-    parser.add_argument("--hotfix", action="store_true", 
-                       help="Create hotfix branch from main")
-    parser.add_argument("--skip-tests", action="store_true", help="Skip running tests")
+    parser.add_argument(
+        "--type", choices=["major", "minor", "patch"], help="Release type (auto-calculates version)"
+    )
+    parser.add_argument("--hotfix", action="store_true", help="Create hotfix branch from main")
     parser.add_argument("--dry-run", action="store_true", help="Show what would be done")
 
     args = parser.parse_args()
@@ -252,14 +251,6 @@ def main():
     # Validate version increment
     if args.type and not validate_version_increment(current_version, new_version, args.type):
         sys.exit(1)
-
-    # Run tests
-    if not args.skip_tests:
-        if not run_tests():
-            print("❌ Tests failed, aborting release")
-            sys.exit(1)
-    else:
-        print("⚠️ Skipping tests")
 
     if args.dry_run:
         print("🔍 DRY RUN - No changes will be made")
@@ -298,6 +289,11 @@ def main():
     # Update version and changelog
     update_version(new_version)
     update_changelog(new_version)
+
+    # Run tests
+    if not run_tests():
+        print("❌ Tests failed, aborting release")
+        sys.exit(1)
 
     # Commit changes
     commit_release_changes(new_version)
