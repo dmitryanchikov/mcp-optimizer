@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.5] - 2025-05-28
 
+### Fixed
+- **CI/CD Pipeline**: Critical fixes for PyPI publishing and merge-back automation
+  - Fixed PyPI publishing job failure due to missing package artifacts
+    - Replaced unreliable GitHub release download with GitHub Actions artifacts
+    - Added `upload-artifact` step in release job to preserve build artifacts
+    - Updated `pypi-publish` job to use `download-artifact` for reliable artifact retrieval
+  - Fixed merge-back job permission and authentication issues
+    - Added missing `actions` permission for GitHub Actions operations
+    - Added required `GH_TOKEN` environment variable for GitHub CLI operations
+    - Implemented intelligent merge conflict resolution for workflow files
+  - Enhanced merge-back automation with three-tier conflict resolution strategy
+    - Primary: Merge with `-X ours` strategy (prefer main branch for conflicts)
+    - Secondary: Standard merge attempt
+    - Tertiary: Automatic workflow conflict resolution + manual issue creation for remaining conflicts
+
+### Changed
+- **Artifact Management**: Improved reliability of package distribution between CI jobs
+  - Standardized artifact naming (`python-package-distributions`) across pipeline
+  - Eliminated timing issues with GitHub release file availability
+  - Reduced dependency on external GitHub CLI for artifact management
+- **Merge Strategy**: Enhanced automation for release-to-develop merges
+  - Automatic resolution of workflow file conflicts in favor of main branch
+  - Detailed conflict reporting and resolution guidance in created issues
+  - Improved PR descriptions with conflict resolution notes
+
 ## [0.3.4] - 2025-05-28
 
 ### Fixed
