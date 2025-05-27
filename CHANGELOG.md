@@ -9,6 +9,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.2] - 2025-05-27
 
+### Fixed
+- **CI/CD Pipeline Optimization**: Unified multiple pipeline files into single efficient workflow
+  - Consolidated `.github/workflows/ci.yml`, `release-branch.yml`, and `auto-finalize-release.yml` into unified pipeline
+  - Eliminated pipeline duplication and race conditions for release branches
+  - Added smart job execution based on branch type (main, release/*, hotfix/*, develop, feature/*)
+  - Implemented emergency release support with `force_release` and `skip_tests` options
+- **Release Process Improvements**: Enhanced automation and reliability
+  - Added triple-fallback release detection system (git branch analysis, version change analysis, commit message analysis)
+  - Improved automatic merge-back to develop with conflict handling via PR creation
+  - Added comprehensive release validation and logging
+  - Enhanced release candidate automation for release branches
+- **Development Tools**: Fixed version synchronization issues
+  - Fixed `scripts/release.py` to automatically sync `uv.lock` after version updates in `pyproject.toml`
+  - Prevents dirty git status after running `uv run` commands post-release
+  - Added error handling for sync failures with graceful degradation
+
+### Added
+- **Unified CI/CD Pipeline**: Single pipeline handling all branch types and scenarios
+  - Branch-specific job execution (test + security + build + release/release-candidate + merge-back)
+  - Emergency release capabilities via workflow dispatch
+  - Automatic release candidate builds for release branches with RC tags
+  - Intelligent merge-back automation with conflict resolution
+- **Enhanced Documentation**: Comprehensive pipeline and release process documentation
+  - Updated `.github/RELEASE_PROCESS.md` with unified pipeline architecture
+  - Added emergency procedures and debugging guides
+  - Documented job distribution by branch type and detection methods
+
+### Changed
+- **Pipeline Architecture**: Streamlined from 3 separate workflows to 1 unified workflow
+  - Improved resource efficiency and eliminated redundant executions
+  - Centralized logging and monitoring for better debugging
+  - Consistent behavior across all branch types
+
 ## [0.3.1] - 2025-05-27
 
 ### Fixed
