@@ -1,10 +1,9 @@
-name: CI/CD Pipeline
+name: Release Branch Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
-    tags: [ 'v*' ]
-  workflow_dispatch:
+    branches: [ 'release/*', 'hotfix/*' ]
+  # Убираем on:pull_request - достаточно on:push
 
 env:
   REGISTRY: ghcr.io
@@ -81,7 +80,6 @@ jobs:
   build:
     needs: [test, security]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: read
       packages: write
@@ -108,8 +106,8 @@ jobs:
         tags: |
           type=ref,event=branch
           type=sha,prefix={{branch}}-
-          type=raw,value=latest,enable={{is_default_branch}}
-          type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
+          type=match,pattern=release/v(.*),group=1,suffix=-rc
+          type=match,pattern=hotfix/v(.*),group=1,suffix=-hotfix
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
@@ -122,13 +120,14 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
-  release:
-    needs: [test, security]
+  release-candidate:
+    needs: [test, security, build]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') && github.ref_type == 'tag'
+    # Только для release веток (не для hotfix)
+    if: startsWith(github.ref, 'refs/heads/release/')
     permissions:
       contents: write
-      id-token: write
+      packages: write
 
     steps:
     - name: Checkout repository
@@ -145,18 +144,45 @@ jobs:
     - name: Install dependencies
       run: uv sync --all-extras --dev
 
+    - name: Extract version from branch
+      id: version
+      run: |
+        BRANCH_NAME=${GITHUB_REF#refs/heads/release/}
+        VERSION=${BRANCH_NAME#v}
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "rc_version=${VERSION}-rc.${GITHUB_RUN_NUMBER}" >> $GITHUB_OUTPUT
+
+    - name: Update version for RC
+      run: |
+        sed -i 's/version = ".*"/version = "${{ steps.version.outputs.rc_version }}"/' pyproject.toml
+
     - name: Build package
       run: uv build
 
-    - name: Publish to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        password: ${{ secrets.PYPI_API_TOKEN }}
-
-    - name: Create GitHub Release
+    - name: Create Release Candidate Release
       uses: softprops/action-gh-release@v2
       with:
+        tag_name: v${{ steps.version.outputs.rc_version }}
+        name: Release Candidate v${{ steps.version.outputs.rc_version }}
         files: dist/*
         generate_release_notes: true
         draft: false
-        prerelease: ${{ contains(github.ref, '-') }}
+        prerelease: true
+        body: |
+          🚀 **Release Candidate for v${{ steps.version.outputs.version }}**
+          
+          This is a release candidate build from the `release/v${{ steps.version.outputs.version }}` branch.
+          
+          **⚠️ This is a pre-release version intended for testing purposes only.**
+          
+          Please test this release candidate and report any issues before the final release.
+          
+          **Installation:**
+          ```bash
+          pip install mcp-optimizer==${{ steps.version.outputs.rc_version }}
+          ```
+          
+          **Docker:**
+          ```bash
+          docker pull ghcr.io/dmitryanchikov/mcp-optimizer:${{ steps.version.outputs.version }}-rc
+          ``` 

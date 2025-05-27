@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.1] - 2025-05-27
 
+### Fixed
+- Fixed CI/CD pipeline duplication by separating release branch workflows from main CI
+- Enhanced release detection with triple-fallback system (git-based, version-based, message-based)
+- Fixed version parsing in auto-finalize-release.yml to target [project] section specifically
+- Improved merge conflict handling with automatic PR creation for develop branch merges
+- Fixed GitHub CLI installation in auto-finalize workflow for issue creation capabilities
+
 ## [0.3.0] - 2025-05-26
 
 ### Added
