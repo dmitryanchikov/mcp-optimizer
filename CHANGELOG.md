@@ -9,22 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.8] - 2025-05-28
 
-## [0.3.8] - 2025-05-28
-
 ### Fixed
-- **Event Loop Compatibility**: Fixed "Already running asyncio in this thread" error when using uvx
-  - Added `nest-asyncio` dependency to handle nested event loops
-  - Updated `main.py` and `src/mcp_optimizer/main.py` to detect existing event loops
-  - Implemented automatic fallback to `run_async()` when event loop is already running
-  - Improved compatibility with uvx, Jupyter notebooks, and other environments with active event loops
-  - Enhanced logging format consistency across entry points
+- **Architecture Simplification**: Completely refactored entry points according to FastMCP documentation
+  - Removed complex event loop detection logic from `main.py` and `src/mcp_optimizer/main.py`
+  - Use simple `mcp.run(transport="stdio")` pattern as recommended by FastMCP
+  - Separated sync and async contexts properly: `run()` for sync, `run_async()` for async
+  - Fixed "capture_exceptions" parameter error by following FastMCP API correctly
 
-### Added
-- **Dependency**: Added `nest-asyncio>=1.5.0` for event loop compatibility
-
-### Changed
-- **Logging Format**: Standardized JSON logging format across all entry points
-- **Server Startup**: Improved event loop detection and handling for better compatibility
 
 ## [0.3.7] - 2025-05-28
 
