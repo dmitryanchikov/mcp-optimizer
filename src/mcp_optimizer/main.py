@@ -37,8 +37,8 @@ async def run_stdio_server() -> None:
 
     mcp_server = create_mcp_server()
 
-    # Run the server with stdio transport
-    await mcp_server.run(  # type: ignore
+    # Run the server with stdio transport using async method
+    await mcp_server.run_async(
         transport="stdio",
         capture_exceptions=not settings.debug,
     )
@@ -156,7 +156,17 @@ async def main() -> None:
 def cli_main() -> None:
     """CLI entry point for setuptools."""
     try:
-        asyncio.run(main())
+        # Check if we're already in an event loop
+        try:
+            loop = asyncio.get_running_loop()
+            # If we get here, there's already a running loop
+            logging.info("Detected running event loop, applying nest_asyncio patch")
+            import nest_asyncio
+            nest_asyncio.apply()
+            asyncio.run(main())
+        except RuntimeError:
+            # No running loop, we can use asyncio.run normally
+            asyncio.run(main())
     except KeyboardInterrupt:
         pass
 
