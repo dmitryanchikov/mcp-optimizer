@@ -38,10 +38,7 @@ async def run_stdio_server() -> None:
     mcp_server = create_mcp_server()
 
     # Run the server with stdio transport using async method
-    await mcp_server.run_async(
-        transport="stdio",
-        capture_exceptions=not settings.debug,
-    )
+    await mcp_server.run_async(transport="stdio")
 
 
 async def run_sse_server() -> None:
@@ -158,7 +155,7 @@ def cli_main() -> None:
     try:
         # Check if we're already in an event loop
         try:
-            loop = asyncio.get_running_loop()
+            asyncio.get_running_loop()
             # If we get here, there's already a running loop
             logging.info("Detected running event loop, applying nest_asyncio patch")
             import nest_asyncio

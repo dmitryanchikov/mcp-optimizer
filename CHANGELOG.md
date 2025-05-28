@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.8] - 2025-05-28
 
+## [0.3.8] - 2025-05-28
+
 ### Fixed
 - **Event Loop Compatibility**: Fixed "Already running asyncio in this thread" error when using uvx
   - Added `nest-asyncio` dependency to handle nested event loops

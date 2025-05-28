@@ -31,7 +31,7 @@ async def run_server_async() -> None:
         logger.info("Starting MCP Optimizer server with stdio transport")
         
         # Run the server asynchronously
-        await mcp.run_async()
+        await mcp.run_async(transport="stdio")
         
     except KeyboardInterrupt:
         logger.info("Server stopped by user")
@@ -48,7 +48,7 @@ def main() -> None:
     try:
         # Check if we're already in an event loop
         try:
-            loop = asyncio.get_running_loop()
+            asyncio.get_running_loop()
             # If we get here, there's already a running loop
             logger.info("Detected running event loop, using async mode")
             # Create a task to run the server
@@ -60,7 +60,7 @@ def main() -> None:
             logger.info("No running event loop detected, using sync mode")
             mcp = create_mcp_server()
             logger.info("Starting MCP Optimizer server with stdio transport")
-            mcp.run()
+            mcp.run(transport="stdio")
             
     except KeyboardInterrupt:
         logger.info("Server stopped by user")
