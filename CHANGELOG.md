@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Ensures merge-back branches pass all required status checks
   - Improves reliability of automated release-to-develop merge process
   - Updated `CONTRIBUTING.md` and `RELEASE_PROCESS.md` to document merge/* branch workflow
+- **Docker Build**: Fixed Docker tag generation for release and hotfix branches
+  - Corrected tag patterns to use full ref paths (`refs/heads/release/v*` instead of `release/v*`)
+  - Resolves "tag is needed when pushing to registry" error for release branches
+  - Ensures proper RC and hotfix Docker image tagging
 - **Development Tools**: Removed outdated `scripts/test_release_detection.py`
   - File contained obsolete simple regex patterns that don't match current triple-fallback detection system
   - Current detection logic is thoroughly tested in production CI/CD pipeline
