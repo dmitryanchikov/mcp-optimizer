@@ -284,16 +284,6 @@ All detected releases must pass validation:
     M -->|Exists| K
 ```
 
-##### Testing & Validation
-The detection system is thoroughly tested in production through:
-- **Real-world CI/CD execution**: Every merge to main tests the detection logic
-- **Multiple fallback methods**: Ensures reliability across different scenarios  
-- **Comprehensive logging**: GitHub Actions logs show detection results and reasoning
-- **Validation layers**: Multiple checks prevent false positives
-- **Manual override**: `scripts/finalize_release.py` available as backup
-
-The triple-fallback detection system has proven reliable across hundreds of releases and provides transparent logging for debugging any edge cases.
-
 ##### Benefits of Multi-Method Approach
 - ✅ **99%+ Detection Rate**: Multiple fallback methods ensure reliability
 - ✅ **Merge Strategy Agnostic**: Works with squash, merge, rebase strategies
@@ -309,6 +299,14 @@ The triple-fallback detection system has proven reliable across hundreds of rele
 - **Failure Transparency**: Explains why detection failed with actionable guidance
 - **Manual Override**: `scripts/finalize_release.py` available as backup
 - **Conservative Approach**: Better to miss a release than create a false one
+
+##### Testing & Validation
+The detection system is thoroughly tested in production through:
+- **Real-world CI/CD execution**: Every merge to main tests the detection logic
+- **Multiple fallback methods**: Ensures reliability across different scenarios  
+- **Comprehensive logging**: GitHub Actions logs show detection results and reasoning
+- **Validation layers**: Multiple checks prevent false positives
+- **Manual override**: `scripts/finalize_release.py` available as backup
 
 #### Fallback: Manual Finalization
 ```bash

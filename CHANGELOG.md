@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.7] - 2025-05-28
+
 ### Fixed
 - **Documentation**: Fixed outdated workflow references in repository setup documentation
   - Replaced `auto-finalize-release.yml` references with `ci.yml` (release job)
@@ -17,6 +19,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Ensures merge-back branches pass all required status checks
   - Improves reliability of automated release-to-develop merge process
   - Updated `CONTRIBUTING.md` and `RELEASE_PROCESS.md` to document merge/* branch workflow
+- **Docker Build**: Fixed Docker tag generation for release and hotfix branches
+  - Corrected tag patterns to use full ref paths (`refs/heads/release/v*` instead of `release/v*`)
+  - Resolves "tag is needed when pushing to registry" error for release branches
+  - Ensures proper RC and hotfix Docker image tagging
+  - Fixed Docker metadata tag generation for release and hotfix branches to properly extract version from branch names
+  - Fixed hardcoded version in `mcp_server.py` to use dynamic version from package metadata instead of outdated `0.1.0`
+  - Improved Docker tagging strategy to follow industry best practices: `main` branch now uses `main` tag instead of `main-<sha>`
+- **Development Tools**: Removed outdated `scripts/test_release_detection.py`
+  - File contained obsolete simple regex patterns that don't match current triple-fallback detection system
+  - Current detection logic is thoroughly tested in production CI/CD pipeline
+  - Removed references from documentation to avoid confusion
+  - Real-world testing in CI/CD provides better validation than isolated test script
 
 ## [0.3.6] - 2025-05-28
 
@@ -129,6 +143,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Improved resource efficiency and eliminated redundant executions
   - Centralized logging and monitoring for better debugging
   - Consistent behavior across all branch types
+- **CI/CD Optimization**: Optimized Docker image build and push strategy
+  - Build job now only pushes images for main, develop, release/*, and hotfix/* branches
+  - Feature and merge branches only build images for validation (no push to registry)
+  - Eliminates unnecessary Docker images for temporary branches
+  - Reduces CI/CD time and registry storage usage
+  - Prevents registry pollution with temporary development images
 
 ## [0.3.1] - 2025-05-27
 
@@ -276,11 +296,4 @@ First stable release with core optimization capabilities and MCP server integrat
 For questions, issues, or contributions:
 - 📧 Email: support@mcp-optimizer.com
 - 🐛 Issues: [GitHub Issues](https://github.com/dmitryanchikov/mcp-optimizer/issues)
-- 📖 Documentation: [docs/](docs/)
-
-### Removed
-- **Development Tools**: Removed outdated `scripts/test_release_detection.py`
-  - File contained obsolete simple regex patterns that don't match current triple-fallback detection system
-  - Current detection logic is thoroughly tested in production CI/CD pipeline
-  - Removed references from documentation to avoid confusion
-  - Real-world testing in CI/CD provides better validation than isolated test script 
+- 📖 Documentation: [docs/](docs/) 
