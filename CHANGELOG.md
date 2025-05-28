@@ -15,7 +15,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Use simple `mcp.run(transport="stdio")` pattern as recommended by FastMCP
   - Separated sync and async contexts properly: `run()` for sync, `run_async()` for async
   - Fixed "capture_exceptions" parameter error by following FastMCP API correctly
+- **Linting and Code Quality**: Comprehensive linting fixes and configuration improvements
+  - Fixed all ruff and mypy linting issues across the codebase
+  - Restructured `pyproject.toml` configuration with proper tool sections
+  - Added proper type ignores for OR-Tools compatibility issues
+  - Fixed unreachable code warnings in validation patterns
+  - Updated deprecated ruff configuration settings
+  - Added MyPy overrides for modules with specific validation patterns
 
+### Changed
+- **Architecture Simplification**: Further simplified entry points based on FastMCP best practices
+  - Removed remaining complex event loop detection logic
+  - Streamlined `main.py` to use simple `mcp.run(transport="stdio")` pattern
+  - Improved separation of sync and async contexts in CLI
+  - Enhanced logging consistency across entry points
+- **Code Quality**: Improved type safety and maintainability
+  - Added comprehensive type annotations and ignores
+  - Fixed OR-Tools type conflicts with proper type casting
+  - Improved error handling in optimization tools
+  - Enhanced code documentation and comments
 
 ## [0.3.7] - 2025-05-28
 
