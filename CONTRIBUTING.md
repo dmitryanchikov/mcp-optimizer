@@ -36,7 +36,7 @@ Thank you for your interest in contributing to MCP Optimizer! This document prov
 **`develop`**
 - **Purpose**: Integration branch for features
 - **Protection**: Protected, no direct pushes except hotfixes
-- **Merges from**: `feature/*`, `hotfix/*` branches
+- **Merges from**: `feature/*` branches
 - **Merges to**: `release/*` branches
 - **Stability**: Should be stable, but may contain experimental features
 
@@ -56,7 +56,7 @@ Thank you for your interest in contributing to MCP Optimizer! This document prov
 - **Purpose**: Prepare new production releases
 - **Naming**: `release/v{major}.{minor}.{patch}`
 - **Branches from**: `develop`
-- **Merges to**: `main` and `develop`
+- **Merges to**: `main`
 - **Lifetime**: Temporary, deleted after release
 - **Examples**: 
   - `release/v1.2.0`
@@ -66,7 +66,7 @@ Thank you for your interest in contributing to MCP Optimizer! This document prov
 - **Purpose**: Critical fixes for production issues
 - **Naming**: `hotfix/v{major}.{minor}.{patch}` or `hotfix/issue-description`
 - **Branches from**: `main`
-- **Merges to**: `main` and `develop`
+- **Merges to**: `main`
 - **Lifetime**: Temporary, deleted after merge
 - **Examples**: 
   - `hotfix/v1.1.1`

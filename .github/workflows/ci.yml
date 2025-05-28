@@ -547,7 +547,6 @@ jobs:
       issues: write
       pull-requests: write
       actions: write
-      workflows: write
 
     steps:
     - name: Checkout repository
