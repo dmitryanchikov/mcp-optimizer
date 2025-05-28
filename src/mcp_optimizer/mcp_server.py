@@ -1,13 +1,8 @@
 """MCP server implementation for optimization tools."""
 
 import logging
+from importlib.metadata import version as get_version
 from typing import Any
-
-try:
-    from importlib.metadata import version as get_version
-except ImportError:
-    # Python < 3.8 fallback - but we require 3.11+, so this is just for type checking
-    from importlib_metadata import version as get_version  # type: ignore[import-untyped]
 
 from fastmcp import FastMCP
 
