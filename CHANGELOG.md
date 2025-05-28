@@ -19,6 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Ensures merge-back branches pass all required status checks
   - Improves reliability of automated release-to-develop merge process
   - Updated `CONTRIBUTING.md` and `RELEASE_PROCESS.md` to document merge/* branch workflow
+- **Development Tools**: Removed outdated `scripts/test_release_detection.py`
+  - File contained obsolete simple regex patterns that don't match current triple-fallback detection system
+  - Current detection logic is thoroughly tested in production CI/CD pipeline
+  - Removed references from documentation to avoid confusion
+  - Real-world testing in CI/CD provides better validation than isolated test script
 
 ## [0.3.6] - 2025-05-28
 
@@ -284,11 +289,4 @@ First stable release with core optimization capabilities and MCP server integrat
 For questions, issues, or contributions:
 - 📧 Email: support@mcp-optimizer.com
 - 🐛 Issues: [GitHub Issues](https://github.com/dmitryanchikov/mcp-optimizer/issues)
-- 📖 Documentation: [docs/](docs/)
-
-### Removed
-- **Development Tools**: Removed outdated `scripts/test_release_detection.py`
-  - File contained obsolete simple regex patterns that don't match current triple-fallback detection system
-  - Current detection logic is thoroughly tested in production CI/CD pipeline
-  - Removed references from documentation to avoid confusion
-  - Real-world testing in CI/CD provides better validation than isolated test script 
+- 📖 Documentation: [docs/](docs/) 
