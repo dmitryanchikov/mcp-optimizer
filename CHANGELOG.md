@@ -7,6 +7,128 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+## [0.3.6] - 2025-05-28
+
+### Fixed
+- **CLI Entry Point**: Fixed CLI command execution error with coroutine handling
+  - Corrected entry point in `pyproject.toml` from `main` to `cli_main` function
+  - Resolved `<coroutine object main>` error when running `uvx mcp-optimizer`
+  - Fixed `RuntimeWarning: coroutine 'main' was never awaited` issue
+- **Release Candidate Documentation**: Corrected installation instructions for RC builds
+  - Removed incorrect PyPI installation info (RC packages are not published to PyPI)
+  - Added proper GitHub Release download instructions for testing RC builds
+  - Clarified that release candidates are only available via GitHub Release artifacts
+- **Repository Documentation**: Fixed status check names in setup documentation
+  - Corrected `ci` → `test (3.11)`, `test (3.12)` in branch protection requirements
+  - Corrected `security-scan` → `security` to match actual CI job names
+  - Updated both `REPOSITORY_SETUP.md` and `RELEASE_PROCESS.md` with accurate job names
+
+### Changed
+- **Version**: Bumped to 0.3.7 for next development cycle
+
+## [0.3.5] - 2025-05-28
+
+### Fixed
+- **CI/CD Pipeline**: Critical fixes for PyPI publishing and merge-back automation
+  - Fixed PyPI publishing job failure due to missing package artifacts
+    - Replaced unreliable GitHub release download with GitHub Actions artifacts
+    - Added `upload-artifact` step in release job to preserve build artifacts
+    - Updated `pypi-publish` job to use `download-artifact` for reliable artifact retrieval
+  - Fixed merge-back job permission and authentication issues
+    - Added missing `actions` permission for GitHub Actions operations
+    - Added required `GH_TOKEN` environment variable for GitHub CLI operations
+    - Implemented intelligent merge conflict resolution for workflow files
+  - Enhanced merge-back automation with three-tier conflict resolution strategy
+    - Primary: Merge with `-X ours` strategy (prefer main branch for conflicts)
+    - Secondary: Standard merge attempt
+    - Tertiary: Automatic workflow conflict resolution + manual issue creation for remaining conflicts
+
+### Changed
+- **Artifact Management**: Improved reliability of package distribution between CI jobs
+  - Standardized artifact naming (`python-package-distributions`) across pipeline
+  - Eliminated timing issues with GitHub release file availability
+  - Reduced dependency on external GitHub CLI for artifact management
+- **Merge Strategy**: Enhanced automation for release-to-develop merges
+  - Automatic resolution of workflow file conflicts in favor of main branch
+  - Detailed conflict reporting and resolution guidance in created issues
+  - Improved PR descriptions with conflict resolution notes
+
+## [0.3.4] - 2025-05-28
+
+### Fixed
+- **CI/CD Pipeline**: Resolved PyPI publishing failures and simplified pipeline architecture
+  - Fixed OIDC token retrieval failures (503 errors) by splitting publishing into separate jobs
+
+### Changed
+- **Pipeline Architecture**: Refactored release process for better reliability and maintainability
+  - Split PyPI and Docker publishing into separate parallel jobs (`pypi-publish`, `docker-publish`)
+  - Simplified `release` job to focus on core release tasks (tagging, GitHub Release creation)
+  - Removed complex error handling and retry mechanisms in favor of manual job re-runs
+  - Enhanced workflow summary to reflect new job structure and parallel execution
+- **Job Dependencies**: Optimized job execution flow
+  - `pypi-publish` and `docker-publish` jobs run in parallel after `release` completion
+  - `merge-back` job runs independently of publishing jobs
+  - Failed publishing jobs can be re-run individually without affecting other jobs
+
+## [0.3.3] - 2025-05-28
+
+### Fixed
+- **CI/CD Pipeline**: Fixed PyPI publishing with Trusted Publisher configuration
+  - Eliminated unnecessary `github.ref_type != 'tag'` condition after removing tag triggers
+- **Code Quality**: Improved workflow maintainability
+  - Translated all Russian comments to English in CI/CD pipeline
+  - Enhanced code readability and international collaboration support
+
+### Changed
+- **CI/CD Optimization**: Streamlined build job conditions
+  - Removed obsolete tag-related checks from build job
+  - Simplified workflow logic after tag trigger removal
+
+## [0.3.2] - 2025-05-27
+
+### Fixed
+- **CI/CD Pipeline Optimization**: Unified multiple pipeline files into single efficient workflow
+  - Consolidated `.github/workflows/ci.yml`, `release-branch.yml`, and `auto-finalize-release.yml` into unified pipeline
+  - Eliminated pipeline duplication and race conditions for release branches
+  - Added smart job execution based on branch type (main, release/*, hotfix/*, develop, feature/*)
+  - Implemented emergency release support with `force_release` and `skip_tests` options
+- **Release Process Improvements**: Enhanced automation and reliability
+  - Added triple-fallback release detection system (git branch analysis, version change analysis, commit message analysis)
+  - Improved automatic merge-back to develop with conflict handling via PR creation
+  - Added comprehensive release validation and logging
+  - Enhanced release candidate automation for release branches
+- **Development Tools**: Fixed version synchronization issues
+  - Fixed `scripts/release.py` to automatically sync `uv.lock` after version updates in `pyproject.toml`
+  - Prevents dirty git status after running `uv run` commands post-release
+  - Added error handling for sync failures with graceful degradation
+
+### Added
+- **Unified CI/CD Pipeline**: Single pipeline handling all branch types and scenarios
+  - Branch-specific job execution (test + security + build + release/release-candidate + merge-back)
+  - Emergency release capabilities via workflow dispatch
+  - Automatic release candidate builds for release branches with RC tags
+  - Intelligent merge-back automation with conflict resolution
+- **Enhanced Documentation**: Comprehensive pipeline and release process documentation
+  - Updated `.github/RELEASE_PROCESS.md` with unified pipeline architecture
+  - Added emergency procedures and debugging guides
+  - Documented job distribution by branch type and detection methods
+
+### Changed
+- **Pipeline Architecture**: Streamlined from 3 separate workflows to 1 unified workflow
+  - Improved resource efficiency and eliminated redundant executions
+  - Centralized logging and monitoring for better debugging
+  - Consistent behavior across all branch types
+
+## [0.3.1] - 2025-05-27
+
+### Fixed
+- Fixed CI/CD pipeline duplication by separating release branch workflows from main CI
+- Enhanced release detection with triple-fallback system (git-based, version-based, message-based)
+- Fixed version parsing in auto-finalize-release.yml to target [project] section specifically
+- Improved merge conflict handling with automatic PR creation for develop branch merges
+- Fixed GitHub CLI installation in auto-finalize workflow for issue creation capabilities
+
 ## [0.3.0] - 2025-05-26
 
 ### Added

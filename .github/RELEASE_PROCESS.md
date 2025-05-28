@@ -44,7 +44,7 @@ For the automated release system to work securely, the following branch protecti
 {
   "required_status_checks": {
     "strict": true,
-    "contexts": ["ci", "security-scan", "tests"]
+    "contexts": ["test (3.11)", "test (3.12)", "security", "build"]
   },
   "enforce_admins": true,
   "required_pull_request_reviews": {
@@ -64,7 +64,7 @@ For the automated release system to work securely, the following branch protecti
 {
   "required_status_checks": {
     "strict": true,
-    "contexts": ["ci", "tests"]
+    "contexts": ["test (3.11)", "test (3.12)", "security"]
   },
   "enforce_admins": false,
   "required_pull_request_reviews": {
@@ -118,7 +118,7 @@ For the automated release system to work securely, the following branch protecti
 - [ ] Security scan completed
 - [ ] Performance benchmarks run
 - [ ] Documentation updated
-- [ ] CHANGELOG.md prepared
+- [ ] CHANGELOG.md prepared (see [Changelog Guidelines](../CONTRIBUTING.md#-changelog-guidelines))
 - [ ] Version number decided
 
 ### 2. Release Branch Creation
@@ -149,7 +149,7 @@ git pull origin develop
 git checkout -b release/v1.2.0
 
 # Update version in pyproject.toml
-# Update CHANGELOG.md with release notes
+# Update CHANGELOG.md with release notes (see Changelog Guidelines in CONTRIBUTING.md)
 # Commit changes
 git add .
 git commit -m "chore: prepare release v1.2.0"
@@ -198,6 +198,27 @@ gh pr create --base main --head release/v1.2.0 --title "Release v1.2.0"
 - [ ] Migration guide (if needed)
 
 #### Merge PR - Automatic Finalization! 🤖
+
+**When you merge the release PR to main, the unified CI/CD pipeline automatically:**
+
+1. **Detects Release** - Triple-fallback detection system:
+   - Git branch analysis (primary)
+   - Version change analysis (fallback 1)
+   - Commit message analysis (fallback 2)
+
+2. **Creates Release Tag** - `v1.2.0` with proper annotation
+
+3. **Publishes Artifacts**:
+   - PyPI package publication
+   - Docker images with semantic versioning tags
+   - GitHub Release with auto-generated notes
+
+4. **Merge Back to Develop** - Automatic PR creation or issue for conflicts
+
+5. **Cleanup** - Release branch deletion
+
+**Emergency Override**: Use workflow dispatch with `force_release: true` for emergency releases.
+
 ```bash
 # After PR merge, automatically happens:
 # ✅ Create tag v1.2.0
@@ -325,7 +346,7 @@ The CI/CD pipeline automatically:
 #### Manual Tasks
 ```bash
 # Monitor automatic finalization
-gh run list --repo dmitryanchikov/mcp-optimizer --workflow="Auto-Finalize Release"
+gh run list --repo dmitryanchikov/mcp-optimizer --workflow="CI/CD Pipeline"
 
 # Check publication
 curl -s https://pypi.org/pypi/mcp-optimizer/json | jq '.info.version'
@@ -404,7 +425,7 @@ git checkout -b hotfix/v1.1.1
 
 # 3. Update version and changelog
 # Edit pyproject.toml
-# Add entry to CHANGELOG.md
+# Add entry to CHANGELOG.md (see Changelog Guidelines in CONTRIBUTING.md)
 
 # 4. Commit and push
 git add .
@@ -482,9 +503,6 @@ uv run python scripts/release.py --hotfix --type patch
 
 # Preview changes (dry run)
 uv run python scripts/release.py --type minor --dry-run
-
-# Skip tests (emergency use only)
-uv run python scripts/release.py --skip-tests
 ```
 
 #### `scripts/finalize_release.py` - Finalize Releases (AUTOMATED!)
@@ -561,6 +579,118 @@ python scripts/test_release_detection.py --simulate
 - Branch cleanup after release
 - CI/CD integration
 
+## 🔄 Unified CI/CD Pipeline
+
+### Pipeline Architecture
+
+The project uses a **single unified CI/CD pipeline** (`.github/workflows/ci.yml`) that handles all branch types and release scenarios:
+
+#### Job Distribution by Branch Type
+
+| Branch Type | Jobs Executed |
+|-------------|---------------|
+| `main` | test + security + build + **release** + merge-back |
+| `release/*` | test + security + build + **release-candidate** |
+| `hotfix/*` | test + security + build |
+| `develop` | test + security + build |
+| `feature/*` | test + security + build |
+
+#### Key Features
+
+**🎯 Smart Job Execution**
+- Jobs only run when needed for specific branch types
+- No duplicate pipeline executions
+- Efficient resource usage
+
+**🚀 Release Candidate Automation**
+- Automatic RC builds for `release/*` branches
+- Pre-release tags with build numbers (`v1.2.0-rc.1`)
+- Docker images with RC tags
+
+**⚡ Emergency Release Support**
+- Workflow dispatch with `force_release: true`
+- Skip tests option for critical hotfixes
+- Manual override capabilities
+
+**🔄 Automatic Merge Back**
+- Creates PR to merge `main` back to `develop`
+- Handles conflicts gracefully with issue creation
+- Respects branch protection rules
+
+#### Pipeline Triggers
+
+```yaml
+on:
+  push:
+    branches: [ main, develop, 'feature/*', 'release/*', 'hotfix/*' ]
+  workflow_dispatch:
+    inputs:
+      force_release:
+        description: 'Force release creation (emergency)'
+        type: boolean
+      skip_tests:
+        description: 'Skip tests (emergency only)'
+        type: boolean
+```
+
+#### Release Detection System
+
+**Triple-Fallback Detection:**
+1. **Git Branch Analysis** (Primary) - Analyzes merge commit parents
+2. **Version Change Analysis** (Fallback 1) - Compares pyproject.toml versions
+3. **Commit Message Analysis** (Fallback 2) - Parses commit messages
+
+**Validation Layers:**
+- Version format validation (`X.Y.Z`)
+- Tag existence check (prevents duplicates)
+- Branch verification (must be on main)
+- Comprehensive logging
+
+#### Emergency Procedures
+
+**Force Release (Emergency)**
+```bash
+# Via GitHub UI: Actions → CI/CD Pipeline → Run workflow
+# Set force_release: true
+# Optionally set skip_tests: true for critical situations
+```
+
+**Manual Fallback**
+```bash
+# If pipeline fails completely
+git checkout main
+git pull origin main
+uv run python scripts/finalize_release.py --version X.Y.Z --skip-ci-check
+```
+
+#### Monitoring & Debugging
+
+**Pipeline Status**
+```bash
+# Check current runs
+gh run list --repo dmitryanchikov/mcp-optimizer
+
+# View specific run
+gh run view <run-id>
+
+# Check logs
+gh run view <run-id> --log
+```
+
+**Release Detection Logs**
+- Check GitHub Actions logs for detection method used
+- Validation failures are clearly logged
+- Fallback progression is tracked
+
+#### Benefits of Unified Approach
+
+✅ **Simplified Maintenance** - Single pipeline file to maintain
+✅ **Consistent Behavior** - Same base jobs across all branches
+✅ **No Duplication** - Eliminates redundant pipeline executions
+✅ **Clear Logic** - Easy to understand what runs when
+✅ **Resource Efficient** - Optimal GitHub Actions usage
+✅ **Emergency Ready** - Built-in override mechanisms
+
 ## 📞 Support and Escalation
 
 ### Release Issues
@@ -573,6 +703,186 @@ python scripts/test_release_detection.py --simulate
 - **Release Manager**: @maintainer-username
 - **Security Team**: security@mcp-optimizer.com
 - **Community**: GitHub Discussions
+
+## 🔧 Merge Conflict Resolution
+
+This section covers resolving merge conflicts that may occur during the automatic merge back from `main` to `develop` after a release.
+
+### When Conflicts Occur
+
+Merge conflicts can happen when:
+- Hotfixes were applied directly to `main`
+- Parallel development occurred on `develop` during release process
+- Version conflicts between release and ongoing development
+- Documentation or configuration changes conflict
+
+### Automatic Detection & Issue Creation
+
+When a merge conflict occurs during the automated release process:
+
+1. **Automatic Issue Creation**: A GitHub issue is automatically created with:
+   - Title: `Merge conflict: release vX.Y.Z main→develop`
+   - Labels: `merge-conflict`, `release`
+   - Detailed resolution steps
+
+2. **Process Halts**: The release finalization continues, but the merge back to develop fails gracefully
+
+### Resolution via Pull Request (Required)
+
+Since direct pushes to `develop` are prohibited by repository settings, all conflict resolution must be done via Pull Request:
+
+#### Step 1: Create Resolution Branch
+```bash
+git checkout main
+git pull origin main
+git checkout -b merge/release-vX.Y.Z-to-develop
+```
+
+#### Step 2: Attempt Merge
+```bash
+git merge develop --no-ff
+```
+
+#### Step 3: Resolve Conflicts
+When conflicts occur, Git will show:
+```
+Auto-merging file.py
+CONFLICT (content): Merge conflict in file.py
+Automatic merge failed; fix conflicts and then commit the result.
+```
+
+#### Step 4: Edit Conflicted Files
+Open each conflicted file and look for conflict markers:
+```python
+<<<<<<< HEAD
+# Code from main branch
+def function_main_version():
+    pass
+=======
+# Code from develop branch  
+def function_develop_version():
+    pass
+>>>>>>> develop
+```
+
+**Resolution Strategy:**
+- **Keep main changes** for bug fixes and security patches
+- **Keep develop changes** for new features that don't conflict
+- **Merge both** when both changes are needed
+- **Consult team** for complex conflicts
+
+#### Step 5: Complete Resolution
+```bash
+git add <resolved-files>
+git commit -m "chore: merge release vX.Y.Z back to develop"
+git push origin merge/release-vX.Y.Z-to-develop
+```
+
+#### Step 6: Create Pull Request
+```bash
+gh pr create \
+  --base develop \
+  --head merge/release-vX.Y.Z-to-develop \
+  --title "Merge release vX.Y.Z back to develop" \
+  --body "Resolves merge conflicts from release vX.Y.Z"
+```
+
+### Common Conflict Scenarios
+
+#### Version Conflicts
+**Problem**: `pyproject.toml` version conflicts
+```toml
+<<<<<<< HEAD
+version = "0.3.0"
+=======
+version = "0.3.1-dev"
+>>>>>>> develop
+```
+
+**Resolution**: Keep develop version (higher version number)
+```toml
+version = "0.3.1-dev"
+```
+
+#### Changelog Conflicts
+**Problem**: `CHANGELOG.md` conflicts
+```markdown
+<<<<<<< HEAD
+## [0.3.0] - 2024-01-15
+=======
+## [Unreleased]
+- New feature in development
+
+## [0.3.0] - 2024-01-15
+>>>>>>> develop
+```
+
+**Resolution**: Merge both sections
+```markdown
+## [Unreleased]
+- New feature in development
+
+## [0.3.0] - 2024-01-15
+```
+
+#### Code Conflicts
+**Problem**: Function/class conflicts
+- **Strategy**: Prefer main branch for bug fixes
+- **Strategy**: Prefer develop branch for new features
+- **Strategy**: Merge both if compatible
+
+### Prevention Strategies
+
+#### 1. Minimize Direct Main Commits
+- Use hotfix branches instead of direct commits to main
+- Follow GitFlow process strictly
+
+#### 2. Regular Sync
+- Regularly merge main to develop during development
+- Keep develop up-to-date with main
+
+#### 3. Coordinate Releases
+- Communicate release timing to team
+- Avoid major develop changes during release process
+
+### Getting Help
+
+#### Automatic Support
+- Check the auto-created GitHub issue for specific conflict details
+- Review the GitHub Actions logs for context
+
+#### Manual Support
+- Ask in team chat for complex conflicts
+- Consult with release manager for critical decisions
+- Use `git log --oneline --graph` to understand branch history
+
+#### Emergency Escalation
+If conflicts are too complex or risky:
+1. Create a backup branch: `git checkout -b backup-develop-$(date +%Y%m%d)`
+2. Reset develop to known good state
+3. Manually apply necessary changes
+4. Coordinate with team for verification
+
+### Verification After Resolution
+
+#### 1. Run Tests
+```bash
+uv run pytest tests/ -v
+```
+
+#### 2. Check Linting
+```bash
+uv run ruff check src/ tests/
+uv run ruff format --check src/ tests/
+```
+
+#### 3. Verify Version
+```bash
+grep version pyproject.toml
+```
+
+#### 4. Check CI
+Monitor GitHub Actions after merging PR to ensure all checks pass.
 
 ---
 

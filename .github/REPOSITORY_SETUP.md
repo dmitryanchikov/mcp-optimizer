@@ -35,9 +35,10 @@ Navigate to **Settings** → **Branches** and add the following rules:
 - ✅ **Require status checks to pass before merging**
   - ✅ Require branches to be up to date before merging
   - **Required status checks:**
-    - `ci`
-    - `security-scan` 
-    - `tests`
+    - `test (3.11)`
+    - `test (3.12)`
+    - `security` 
+    - `build`
 - ✅ **Require conversation resolution before merging**
 - ✅ **Require signed commits**
 - ✅ **Require linear history**
@@ -57,8 +58,9 @@ Navigate to **Settings** → **Branches** and add the following rules:
 - ✅ **Require status checks to pass before merging**
   - ✅ Require branches to be up to date before merging
   - **Required status checks:**
-    - `ci`
-    - `tests`
+    - `test (3.11)`
+    - `test (3.12)`
+    - `security`
 - ✅ **Require conversation resolution before merging**
 - ✅ **Require signed commits**
 - ❌ Do not allow bypassing the above settings (allow for maintainers)
@@ -74,9 +76,10 @@ Navigate to **Settings** → **Branches** and add the following rules:
   - ✅ Require review from code owners
 - ✅ **Require status checks to pass before merging**
   - **Required status checks:**
-    - `ci`
-    - `tests`
-    - `security-scan`
+    - `test (3.11)`
+    - `test (3.12)`
+    - `security`
+    - `build`
 - ✅ **Require conversation resolution before merging**
 - ❌ Allow force pushes
 - ❌ Allow deletions
@@ -90,9 +93,10 @@ Navigate to **Settings** → **Branches** and add the following rules:
   - ✅ Require review from code owners
 - ✅ **Require status checks to pass before merging**
   - **Required status checks:**
-    - `ci`
-    - `tests`
-    - `security-scan`
+    - `test (3.11)`
+    - `test (3.12)`
+    - `security`
+    - `build`
 - ✅ **Require conversation resolution before merging**
 - ❌ Allow force pushes
 - ❌ Allow deletions
