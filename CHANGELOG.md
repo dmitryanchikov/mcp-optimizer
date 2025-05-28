@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.7] - 2025-05-28
+
 ### Fixed
 - **Documentation**: Fixed outdated workflow references in repository setup documentation
   - Replaced `auto-finalize-release.yml` references with `ci.yml` (release job)
