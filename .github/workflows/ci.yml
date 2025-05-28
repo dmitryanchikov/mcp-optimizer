@@ -192,14 +192,20 @@ jobs:
           Please test this release candidate and report any issues before the final release.
           
           **Installation:**
+          
+          **📦 From GitHub Release (recommended for testing):**
           ```bash
-          pip install mcp-optimizer==${{ steps.version.outputs.rc_version }}
+          # Download wheel from GitHub Release
+          wget https://github.com/dmitryanchikov/mcp-optimizer/releases/download/v${{ steps.version.outputs.rc_version }}/mcp_optimizer-${{ steps.version.outputs.rc_version }}-py3-none-any.whl
+          pip install mcp_optimizer-${{ steps.version.outputs.rc_version }}-py3-none-any.whl
           ```
           
-          **Docker:**
+          **🐳 Docker:**
           ```bash
           docker pull ghcr.io/dmitryanchikov/mcp-optimizer:${{ steps.version.outputs.version }}-rc
           ```
+          
+          **⚠️ Note**: Release candidates are NOT published to PyPI. Use GitHub Release artifacts for testing.
 
   release:
     needs: [test, security, build]
