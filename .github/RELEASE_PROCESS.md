@@ -594,6 +594,7 @@ The project uses a **single unified CI/CD pipeline** (`.github/workflows/ci.yml`
 | `hotfix/*` | test + security + build |
 | `develop` | test + security + build |
 | `feature/*` | test + security + build |
+| `merge/*` | test + security + build |
 
 #### Key Features
 
@@ -622,7 +623,7 @@ The project uses a **single unified CI/CD pipeline** (`.github/workflows/ci.yml`
 ```yaml
 on:
   push:
-    branches: [ main, develop, 'feature/*', 'release/*', 'hotfix/*' ]
+    branches: [ main, develop, 'feature/*', 'release/*', 'hotfix/*', 'merge/*' ]
   workflow_dispatch:
     inputs:
       force_release:

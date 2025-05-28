@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Documentation**: Fixed outdated workflow references in repository setup documentation
+  - Replaced `auto-finalize-release.yml` references with `ci.yml` (release job)
+  - Updated `REPOSITORY_SETUP.md` to reference unified CI/CD pipeline
+  - Corrected workflow troubleshooting instructions to reflect current architecture
+- **CI/CD Pipeline**: Added `merge/*` branches to pipeline triggers
+  - Enables CI checks for merge-back branches before creating PRs to develop
+  - Ensures merge-back branches pass all required status checks
+  - Improves reliability of automated release-to-develop merge process
 
 ## [0.3.6] - 2025-05-28
 

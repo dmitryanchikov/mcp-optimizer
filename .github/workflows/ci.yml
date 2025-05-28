@@ -2,7 +2,7 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop, 'feature/*', 'release/*', 'hotfix/*' ]
+    branches: [ main, develop, 'feature/*', 'release/*', 'hotfix/*', 'merge/*' ]
   workflow_dispatch:
     inputs:
       force_release:
