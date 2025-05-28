@@ -44,7 +44,7 @@ For the automated release system to work securely, the following branch protecti
 {
   "required_status_checks": {
     "strict": true,
-    "contexts": ["ci", "security-scan", "tests"]
+    "contexts": ["test (3.11)", "test (3.12)", "security", "build"]
   },
   "enforce_admins": true,
   "required_pull_request_reviews": {
@@ -64,7 +64,7 @@ For the automated release system to work securely, the following branch protecti
 {
   "required_status_checks": {
     "strict": true,
-    "contexts": ["ci", "tests"]
+    "contexts": ["test (3.11)", "test (3.12)", "security"]
   },
   "enforce_admins": false,
   "required_pull_request_reviews": {
