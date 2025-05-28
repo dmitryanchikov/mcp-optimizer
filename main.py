@@ -11,7 +11,8 @@ def setup_logging() -> None:
     """Setup logging configuration."""
     logging.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        format='{"timestamp": "%(asctime)s", "level": "%(levelname)s", "module": "%(name)s", "message": "%(message)s"}',
+        datefmt="%Y-%m-%dT%H:%M:%S",
         handlers=[
             logging.StreamHandler(sys.stderr),
         ],
@@ -21,24 +22,24 @@ def setup_logging() -> None:
 def main() -> None:
     """Main entry point for the MCP server."""
     setup_logging()
-    logger = logging.getLogger(__name__)
-
+    
     try:
         # Create MCP server with all optimization tools
         mcp = create_mcp_server()
-
-        logger.info("Starting MCP Optimizer server...")
-        logger.info("Server created successfully with all optimization tools")
-
-        # Run the server (FastMCP handles asyncio internally)
-        mcp.run()
-
+        
+        # Run the server with stdio transport (default)
+        # This is the recommended pattern from FastMCP documentation
+        mcp.run(transport="stdio")
+        
     except KeyboardInterrupt:
-        logger.info("Server stopped by user")
+        logging.info("Server stopped by user")
     except Exception as e:
-        logger.error(f"Server error: {e}")
+        logging.error(f"Server error: {e}")
         sys.exit(1)
 
+
+# Export mcp object for FastMCP CLI compatibility
+mcp = create_mcp_server()
 
 if __name__ == "__main__":
     main()

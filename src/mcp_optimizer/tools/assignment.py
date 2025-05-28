@@ -129,7 +129,7 @@ def solve_transportation_problem(
                     "error_message": f"Supplier {i} must have 'name' and 'supply' fields",
                 }
 
-        # Validate consumer format
+        # Validate consumer format  # type: ignore[unreachable]
         for i, consumer in enumerate(consumers):
             if not isinstance(consumer, dict):
                 return {
@@ -148,7 +148,7 @@ def solve_transportation_problem(
                     "error_message": f"Consumer {i} must have 'name' and 'demand' fields",
                 }
 
-        # Validate cost matrix dimensions
+        # Validate cost matrix dimensions  # type: ignore[unreachable]
         if len(costs) != len(suppliers):
             return {
                 "status": "error",
@@ -189,9 +189,7 @@ def solve_transportation_problem(
             costs=costs,
         )
 
-        logger.info(
-            f"Transportation problem solved with status: {result.get('status')}"
-        )
+        logger.info(f"Transportation problem solved with status: {result.get('status')}")
         return result
 
     except Exception as e:
@@ -206,7 +204,7 @@ def solve_transportation_problem(
 
 
 def register_assignment_tools(mcp: FastMCP[Any]) -> None:
-    """Register assignment problem tools with the MCP server."""
+    """Register assignment and transportation problem tools."""
 
     @mcp.tool()
     def solve_assignment_problem_tool(
@@ -217,45 +215,27 @@ def register_assignment_tools(mcp: FastMCP[Any]) -> None:
         max_tasks_per_worker: int | None = None,
         min_tasks_per_worker: int | None = None,
     ) -> dict[str, Any]:
-        """Solve assignment problem using OR-Tools.
-
-        This tool solves assignment problems where workers need to be assigned
-        to tasks optimally. It uses the Hungarian algorithm for simple 1:1
-        assignments and linear programming for complex constraints.
-
-        Use cases:
-        - Task assignment: Assign employees to projects based on skills and workload
-        - Machine scheduling: Assign jobs to machines to minimize completion time
-        - Course scheduling: Assign teachers to classes considering preferences
-        - Delivery routing: Assign delivery drivers to routes optimally
-        - Resource matching: Match available resources to requirements
-        - Partner matching: Pair people or entities based on compatibility scores
+        """
+        Solve assignment problem using OR-Tools Hungarian algorithm.
 
         Args:
             workers: List of worker names
             tasks: List of task names
-            costs: Cost matrix where costs[i][j] is the cost of assigning worker i to task j
-            maximize: Whether to maximize instead of minimize the objective (default: False)
-            max_tasks_per_worker: Maximum number of tasks per worker (optional)
-            min_tasks_per_worker: Minimum number of tasks per worker (optional)
+            costs: 2D cost matrix where costs[i][j] is cost of assigning worker i to task j
+            maximize: Whether to maximize instead of minimize (default: False)
+            max_tasks_per_worker: Maximum tasks per worker (optional)
+            min_tasks_per_worker: Minimum tasks per worker (optional)
 
         Returns:
-            Assignment result with total cost and individual assignments
-
-        Example:
-            # Assign 3 workers to 3 tasks to minimize total cost
-            solve_assignment_problem(
-                workers=["Alice", "Bob", "Charlie"],
-                tasks=["Task1", "Task2", "Task3"],
-                costs=[
-                    [9, 2, 7],  # Alice's costs for each task
-                    [6, 4, 3],  # Bob's costs for each task
-                    [5, 8, 1]   # Charlie's costs for each task
-                ]
-            )
+            Dictionary with solution status, assignments, total cost, and execution time
         """
         return solve_assignment_problem(
-            workers, tasks, costs, maximize, max_tasks_per_worker, min_tasks_per_worker
+            workers=workers,
+            tasks=tasks,
+            costs=costs,
+            maximize=maximize,
+            max_tasks_per_worker=max_tasks_per_worker,
+            min_tasks_per_worker=min_tasks_per_worker,
         )
 
     @mcp.tool()
@@ -264,47 +244,21 @@ def register_assignment_tools(mcp: FastMCP[Any]) -> None:
         consumers: list[dict[str, Any]],
         costs: list[list[float]],
     ) -> dict[str, Any]:
-        """Solve transportation problem using OR-Tools.
-
-        This tool solves transportation problems where goods need to be moved
-        from suppliers to consumers at minimum cost while satisfying supply
-        and demand constraints.
-
-        Use cases:
-        - Supply chain logistics: Move goods from warehouses to retail locations
-        - Distribution planning: Optimize product distribution to minimize shipping costs
-        - Emergency response: Allocate emergency supplies from depots to affected areas
-        - Raw material sourcing: Transport materials from suppliers to manufacturing plants
-        - Waste management: Route waste from collection points to processing facilities
-        - Food distribution: Distribute perishable goods from farms to markets efficiently
+        """
+        Solve transportation problem using OR-Tools.
 
         Args:
-            suppliers: List of suppliers, each with 'name' and 'supply' amount
-            consumers: List of consumers, each with 'name' and 'demand' amount
-            costs: Transportation cost matrix where costs[i][j] is the cost per unit
-                  from supplier i to consumer j
+            suppliers: List of supplier dictionaries with 'name' and 'supply' keys
+            consumers: List of consumer dictionaries with 'name' and 'demand' keys
+            costs: 2D cost matrix where costs[i][j] is cost of shipping from supplier i to consumer j
 
         Returns:
-            Transportation result with total cost and individual flows
-
-        Example:
-            # Transport goods from 2 suppliers to 3 consumers
-            solve_transportation_problem(
-                suppliers=[
-                    {"name": "Warehouse A", "supply": 100},
-                    {"name": "Warehouse B", "supply": 150}
-                ],
-                consumers=[
-                    {"name": "Store 1", "demand": 80},
-                    {"name": "Store 2", "demand": 70},
-                    {"name": "Store 3", "demand": 100}
-                ],
-                costs=[
-                    [4, 6, 8],  # Costs from Warehouse A
-                    [5, 3, 7]   # Costs from Warehouse B
-                ]
-            )
+            Dictionary with solution status, flows, total cost, and execution time
         """
-        return solve_transportation_problem(suppliers, consumers, costs)
+        return solve_transportation_problem(
+            suppliers=suppliers,
+            consumers=consumers,
+            costs=costs,
+        )
 
     logger.info("Registered assignment and transportation tools")

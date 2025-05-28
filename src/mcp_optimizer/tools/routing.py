@@ -107,26 +107,14 @@ def calculate_distance_matrix(
                 x1, y1 = get_coord(loc1, "x"), get_coord(loc1, "y")
                 x2, y2 = get_coord(loc2, "x"), get_coord(loc2, "y")
 
-                if (
-                    lat1 is not None
-                    and lng1 is not None
-                    and lat2 is not None
-                    and lng2 is not None
-                ):
+                if lat1 is not None and lng1 is not None and lat2 is not None and lng2 is not None:
                     # Haversine distance for lat/lng
                     distance = haversine_distance(lat1, lng1, lat2, lng2)
-                elif (
-                    x1 is not None
-                    and y1 is not None
-                    and x2 is not None
-                    and y2 is not None
-                ):
+                elif x1 is not None and y1 is not None and x2 is not None and y2 is not None:
                     # Euclidean distance for x/y
                     distance = math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
                 else:
-                    raise ValueError(
-                        f"Insufficient coordinate data for locations {i} and {j}"
-                    )
+                    raise ValueError(f"Insufficient coordinate data for locations {i} and {j}")
 
                 matrix[i][j] = distance
 

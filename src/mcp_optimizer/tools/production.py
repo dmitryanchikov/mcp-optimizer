@@ -28,14 +28,8 @@ class Product(BaseModel):
     setup_cost: float = Field(default=0.0, ge=0)
 
     @validator("max_production")
-    def validate_max_production(
-        cls, v: float | None, values: dict[str, Any]
-    ) -> float | None:
-        if (
-            v is not None
-            and "min_production" in values
-            and v < values["min_production"]
-        ):
+    def validate_max_production(cls, v: float | None, values: dict[str, Any]) -> float | None:
+        if v is not None and "min_production" in values and v < values["min_production"]:
             raise ValueError("max_production must be >= min_production")
         return v
 
@@ -59,9 +53,7 @@ class DemandConstraint(BaseModel):
     period: int | None = Field(default=None, ge=0)
 
     @validator("max_demand")
-    def validate_max_demand(
-        cls, v: float | None, values: dict[str, Any]
-    ) -> float | None:
+    def validate_max_demand(cls, v: float | None, values: dict[str, Any]) -> float | None:
         if v is not None and "min_demand" in values and v < values["min_demand"]:
             raise ValueError("max_demand must be >= min_demand")
         return v
@@ -101,9 +93,7 @@ class ProductionPlanningInput(BaseModel):
             product_names = {product.name for product in values["products"]}
             for constraint in v:
                 if constraint.product not in product_names:
-                    raise ValueError(
-                        f"Unknown product '{constraint.product}' in demand constraint"
-                    )
+                    raise ValueError(f"Unknown product '{constraint.product}' in demand constraint")
         return v
 
 
@@ -134,9 +124,7 @@ def solve_production_planning(input_data: dict[str, Any]) -> OptimizationResult:
 
         # Decision variables: production quantities for each product in each period
         production_vars: dict[int, dict[str, Any]] = {}
-        setup_vars: dict[
-            int, dict[str, Any]
-        ] = {}  # Binary variables for setup decisions
+        setup_vars: dict[int, dict[str, Any]] = {}  # Binary variables for setup decisions
         inventory_vars: dict[int, dict[str, Any]] = {}  # Inventory levels
 
         for period in range(horizon):
@@ -169,8 +157,7 @@ def solve_production_planning(input_data: dict[str, Any]) -> OptimizationResult:
         for period in range(horizon):
             for resource_name, resource in resources.items():
                 resource_usage = pulp.lpSum(
-                    production_vars[period][product.name]
-                    * product.resources.get(resource_name, 0)
+                    production_vars[period][product.name] * product.resources.get(resource_name, 0)
                     for product in products
                 )
                 prob += (
@@ -241,12 +228,7 @@ def solve_production_planning(input_data: dict[str, Any]) -> OptimizationResult:
                 # Maximum demand constraints
                 if demand_constraint and demand_constraint.max_demand is not None:
                     prob += (
-                        prod_var
-                        + (
-                            inventory_vars[period - 1][product.name]
-                            if period > 0
-                            else 0
-                        )
+                        prod_var + (inventory_vars[period - 1][product.name] if period > 0 else 0)
                         <= demand_constraint.max_demand + inv_var,
                         f"Max_Demand_{product.name}_Period_{period}",
                     )
@@ -259,8 +241,7 @@ def solve_production_planning(input_data: dict[str, Any]) -> OptimizationResult:
             for period in range(horizon):
                 # Production profit
                 period_profit = pulp.lpSum(
-                    production_vars[period][product.name] * product.profit
-                    for product in products
+                    production_vars[period][product.name] * product.profit for product in products
                 )
                 total_profit += period_profit
 
@@ -276,8 +257,7 @@ def solve_production_planning(input_data: dict[str, Any]) -> OptimizationResult:
                 # Inventory costs
                 if planning_input.inventory_cost > 0:
                     inventory_costs = pulp.lpSum(
-                        inventory_vars[period][product.name]
-                        * planning_input.inventory_cost
+                        inventory_vars[period][product.name] * planning_input.inventory_cost
                         for product in products
                     )
                     total_profit -= inventory_costs
@@ -344,15 +324,11 @@ def solve_production_planning(input_data: dict[str, Any]) -> OptimizationResult:
                     production_qty = production_vars[period][product.name].varValue or 0
                     inventory_qty = inventory_vars[period][product.name].varValue or 0
                     setup_decision = (
-                        setup_vars[period][product.name].varValue
-                        if product.setup_cost > 0
-                        else 0
+                        setup_vars[period][product.name].varValue if product.setup_cost > 0 else 0
                     )
 
                     product_profit = production_qty * product.profit
-                    product_cost = (
-                        production_qty * (-product.profit) if product.profit < 0 else 0
-                    )
+                    product_cost = production_qty * (-product.profit) if product.profit < 0 else 0
                     product_time = production_qty * product.production_time
 
                     period_plan["products"].append(
@@ -366,12 +342,12 @@ def solve_production_planning(input_data: dict[str, Any]) -> OptimizationResult:
                         }
                     )
 
-                    period_plan["period_profit"] = float(
-                        period_plan["period_profit"]
-                    ) + float(product_profit)
-                    period_plan["period_cost"] = float(
-                        period_plan["period_cost"]
-                    ) + float(product_cost)
+                    period_plan["period_profit"] = float(period_plan["period_profit"]) + float(
+                        product_profit
+                    )
+                    period_plan["period_cost"] = float(period_plan["period_cost"]) + float(
+                        product_cost
+                    )
 
                     total_profit += float(product_profit)  # type: ignore
                     total_cost += float(product_cost)  # type: ignore
@@ -387,9 +363,7 @@ def solve_production_planning(input_data: dict[str, Any]) -> OptimizationResult:
                     period_plan["resource_usage"][resource_name] = {
                         "used": usage,
                         "available": resource.available,
-                        "utilization": usage / resource.available
-                        if resource.available > 0
-                        else 0,
+                        "utilization": usage / resource.available if resource.available > 0 else 0,
                     }
 
                     if resource_name not in resource_utilization:
@@ -411,9 +385,7 @@ def solve_production_planning(input_data: dict[str, Any]) -> OptimizationResult:
                 resource = resources[resource_name]
                 summary["resource_utilization_summary"][resource_name] = {
                     "total_usage": sum(usage_list),
-                    "average_utilization": sum(
-                        u / resource.available for u in usage_list
-                    )
+                    "average_utilization": sum(u / resource.available for u in usage_list)
                     / len(usage_list)
                     if resource.available > 0
                     else 0,
@@ -480,9 +452,7 @@ def optimize_production(
                 {
                     "name": product["name"],
                     "profit": product["profit"],
-                    "resources": {
-                        k: v for k, v in product.items() if k not in ["name", "profit"]
-                    },
+                    "resources": {k: v for k, v in product.items() if k not in ["name", "profit"]},
                     "production_time": 1.0,
                     "min_production": 0.0,
                     "max_production": None,

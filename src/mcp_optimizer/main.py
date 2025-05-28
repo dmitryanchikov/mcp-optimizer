@@ -1,7 +1,6 @@
 """Main entry point for MCP Optimizer server."""
 
 import argparse
-import asyncio
 import logging
 import sys
 
@@ -31,17 +30,14 @@ def setup_logging() -> None:
         )
 
 
-async def run_stdio_server() -> None:
+def run_stdio_server() -> None:
     """Run MCP server with stdio transport."""
     logging.info("Starting MCP Optimizer server with stdio transport")
 
     mcp_server = create_mcp_server()
 
-    # Run the server with stdio transport
-    await mcp_server.run(  # type: ignore
-        transport="stdio",
-        capture_exceptions=not settings.debug,
-    )
+    # Use the simple run() method as recommended by FastMCP
+    mcp_server.run(transport="stdio")
 
 
 async def run_sse_server() -> None:
@@ -119,7 +115,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-async def main() -> None:
+def main() -> None:
     """Main entry point."""
     args = parse_args()
 
@@ -141,9 +137,12 @@ async def main() -> None:
 
     try:
         if settings.mcp_transport == MCPTransport.STDIO:
-            await run_stdio_server()
+            run_stdio_server()
         else:
-            await run_sse_server()
+            # For SSE transport, we need async
+            import asyncio
+
+            asyncio.run(run_sse_server())
     except KeyboardInterrupt:
         logging.info("Server shutdown requested")
     except Exception as e:
@@ -156,10 +155,13 @@ async def main() -> None:
 def cli_main() -> None:
     """CLI entry point for setuptools."""
     try:
-        asyncio.run(main())
+        main()
     except KeyboardInterrupt:
         pass
 
+
+# Export mcp object for FastMCP CLI compatibility
+mcp = create_mcp_server()
 
 if __name__ == "__main__":
     cli_main()

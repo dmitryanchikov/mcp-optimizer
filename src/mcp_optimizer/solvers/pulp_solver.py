@@ -77,11 +77,7 @@ class PuLPSolver:
 
         try:
             # Create problem
-            sense = (
-                pulp.LpMaximize
-                if objective.sense.value == "maximize"
-                else pulp.LpMinimize
-            )
+            sense = pulp.LpMaximize if objective.sense.value == "maximize" else pulp.LpMinimize
             problem = pulp.LpProblem("LinearProgram", sense)
 
             # Create variables
@@ -196,9 +192,7 @@ class PuLPSolver:
             result_dict["variables"] = variable_values
             result_dict["solver_info"] = solver_info.model_dump()
 
-            logger.info(
-                f"Solved in {execution_time:.3f}s with status: {opt_status.value}"
-            )
+            logger.info(f"Solved in {execution_time:.3f}s with status: {opt_status.value}")
             return result_dict
 
         except Exception as e:

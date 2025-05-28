@@ -70,15 +70,11 @@ class PortfolioInput(BaseModel):
         if v is not None and "assets" in values:
             n = len(values["assets"])
             if len(v) != n or any(len(row) != n for row in v):
-                raise ValueError(
-                    "Correlation matrix dimensions must match number of assets"
-                )
+                raise ValueError("Correlation matrix dimensions must match number of assets")
             # Check if matrix is symmetric and diagonal elements are 1
             for i in range(n):
                 if abs(v[i][i] - 1.0) > 1e-6:
-                    raise ValueError(
-                        "Diagonal elements of correlation matrix must be 1"
-                    )
+                    raise ValueError("Diagonal elements of correlation matrix must be 1")
                 for j in range(i):
                     if abs(v[i][j] - v[j][i]) > 1e-6:
                         raise ValueError("Correlation matrix must be symmetric")
@@ -151,8 +147,7 @@ def solve_portfolio_optimization(input_data: dict[str, Any]) -> OptimizationResu
         if portfolio_input.objective == "maximize_return":
             # Maximize expected return
             expected_return = pulp.lpSum(
-                allocations[asset.name] * asset.expected_return / budget
-                for asset in assets
+                allocations[asset.name] * asset.expected_return / budget for asset in assets
             )
             prob += expected_return, "Expected_Return"
 
@@ -168,11 +163,7 @@ def solve_portfolio_optimization(input_data: dict[str, Any]) -> OptimizationResu
                         weight_j = allocations[asset_j.name] / budget
                         correlation = portfolio_input.correlation_matrix[i][j]
                         portfolio_variance += (
-                            weight_i
-                            * weight_j
-                            * asset_i.risk
-                            * asset_j.risk
-                            * correlation
+                            weight_i * weight_j * asset_i.risk * asset_j.risk * correlation
                         )
 
                 # Since PuLP doesn't handle quadratic objectives directly, we'll use a linear approximation
@@ -191,14 +182,11 @@ def solve_portfolio_optimization(input_data: dict[str, Any]) -> OptimizationResu
             # This is complex to implement directly in linear programming
             # We'll approximate by maximizing return - risk_penalty * risk
             risk_penalty = (
-                1.0 / portfolio_input.risk_tolerance
-                if portfolio_input.risk_tolerance > 0
-                else 1.0
+                1.0 / portfolio_input.risk_tolerance if portfolio_input.risk_tolerance > 0 else 1.0
             )
 
             expected_return = pulp.lpSum(
-                allocations[asset.name] * asset.expected_return / budget
-                for asset in assets
+                allocations[asset.name] * asset.expected_return / budget for asset in assets
             )
             portfolio_risk = pulp.lpSum(
                 allocations[asset.name] * asset.risk / budget for asset in assets
@@ -246,9 +234,7 @@ def solve_portfolio_optimization(input_data: dict[str, Any]) -> OptimizationResu
 
             # Calculate portfolio metrics
             portfolio_variance = portfolio_risk**2  # Simplified
-            portfolio_std = (
-                math.sqrt(portfolio_variance) if portfolio_variance > 0 else 0
-            )
+            portfolio_std = math.sqrt(portfolio_variance) if portfolio_variance > 0 else 0
             sharpe_ratio = (
                 (portfolio_return - portfolio_input.risk_free_rate) / portfolio_std
                 if portfolio_std > 0
@@ -261,9 +247,7 @@ def solve_portfolio_optimization(input_data: dict[str, Any]) -> OptimizationResu
                 if asset.sector:
                     if asset.sector not in sector_allocation:
                         sector_allocation[asset.sector] = 0
-                    sector_allocation[asset.sector] += portfolio_allocation[asset.name][
-                        "weight"
-                    ]
+                    sector_allocation[asset.sector] += portfolio_allocation[asset.name]["weight"]
 
             return OptimizationResult(
                 status=OptimizationStatus.OPTIMAL,
@@ -360,12 +344,8 @@ def solve_risk_parity_portfolio(input_data: dict[str, Any]) -> OptimizationResul
                 allocation_amount = weight * budget
 
                 # Apply allocation constraints
-                allocation_amount = max(
-                    allocation_amount, asset.min_allocation * budget
-                )
-                allocation_amount = min(
-                    allocation_amount, asset.max_allocation * budget
-                )
+                allocation_amount = max(allocation_amount, asset.min_allocation * budget)
+                allocation_amount = min(allocation_amount, asset.max_allocation * budget)
 
                 portfolio_allocation[asset.name] = {
                     "amount": allocation_amount,
@@ -395,9 +375,9 @@ def solve_risk_parity_portfolio(input_data: dict[str, Any]) -> OptimizationResul
         if total_allocation > 0:
             scale_factor = budget / total_allocation
             for asset_name in portfolio_allocation:
-                portfolio_allocation[asset_name]["amount"] *= scale_factor  # type: ignore
-                portfolio_allocation[asset_name]["weight"] *= scale_factor  # type: ignore
-                portfolio_allocation[asset_name]["risk_contribution"] *= scale_factor  # type: ignore
+                portfolio_allocation[asset_name]["amount"] *= scale_factor  # type: ignore[operator]
+                portfolio_allocation[asset_name]["weight"] *= scale_factor  # type: ignore[operator]
+                portfolio_allocation[asset_name]["risk_contribution"] *= scale_factor  # type: ignore[operator]
 
         execution_time = time.time() - start_time
 
@@ -414,11 +394,11 @@ def solve_risk_parity_portfolio(input_data: dict[str, Any]) -> OptimizationResul
                         1.0
                         - (
                             max(
-                                float(alloc["risk_contribution"])  # type: ignore[misc,operator,type-var,arg-type]
+                                float(alloc["risk_contribution"])  # type: ignore[arg-type]
                                 for alloc in portfolio_allocation.values()
                             )
                             - min(
-                                float(alloc["risk_contribution"])  # type: ignore[misc,operator,type-var,arg-type]
+                                float(alloc["risk_contribution"])  # type: ignore[arg-type]
                                 for alloc in portfolio_allocation.values()
                             )
                         )

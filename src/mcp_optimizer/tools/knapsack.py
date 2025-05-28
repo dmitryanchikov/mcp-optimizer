@@ -147,9 +147,7 @@ def solve_knapsack_problem(
             for i in range(len(values)):
                 if solver.best_solution_contains(i):
                     item_name = item_names[i]
-                    original_item = next(
-                        item for item in items if item["name"] == item_name
-                    )
+                    original_item = next(item for item in items if item["name"] == item_name)
 
                     if item_name in item_counts:
                         item_counts[item_name] += 1
@@ -158,9 +156,7 @@ def solve_knapsack_problem(
 
             # Create selected items list
             for item_name, count in item_counts.items():
-                original_item = next(
-                    item for item in items if item["name"] == item_name
-                )
+                original_item = next(item for item in items if item["name"] == item_name)
                 selected_items.append(
                     {
                         "name": item_name,
