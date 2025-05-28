@@ -5,6 +5,7 @@ This module provides tools for solving scheduling problems including:
 - Shift Scheduling
 """
 
+import logging
 import time
 from typing import Any
 
@@ -13,6 +14,8 @@ from ortools.sat.python import cp_model
 from pydantic import BaseModel, Field, validator
 
 from ..schemas.base import OptimizationResult, OptimizationStatus
+
+logger = logging.getLogger(__name__)
 
 
 class Task(BaseModel):
@@ -51,13 +54,13 @@ class JobSchedulingInput(BaseModel):
     @validator("jobs")
     def validate_jobs(cls, v: list[Job]) -> list[Job]:
         if not v:
-            raise ValueError("At least one job required")
+            raise ValueError("Must have at least one job")
         return v
 
     @validator("machines")
     def validate_machines(cls, v: list[str]) -> list[str]:
         if not v:
-            raise ValueError("At least one machine required")
+            raise ValueError("Must have at least one machine")
         return v
 
 
@@ -73,7 +76,7 @@ class Shift(BaseModel):
     @validator("end")
     def validate_end_time(cls, v: int, values: dict[str, Any]) -> int:
         if "start" in values and v <= values["start"]:
-            raise ValueError("Shift end time must be after start time")
+            raise ValueError("End time must be after start time")
         return v
 
 
@@ -100,13 +103,13 @@ class ShiftSchedulingInput(BaseModel):
     @validator("employees")
     def validate_employees(cls, v: list[str]) -> list[str]:
         if not v:
-            raise ValueError("At least one employee required")
+            raise ValueError("Must have at least one employee")
         return v
 
     @validator("shifts")
     def validate_shifts(cls, v: list[Shift]) -> list[Shift]:
         if not v:
-            raise ValueError("At least one shift required")
+            raise ValueError("Must have at least one shift")
         return v
 
 
@@ -117,7 +120,7 @@ def solve_job_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
         input_data: Job scheduling problem specification
 
     Returns:
-        OptimizationResult with schedule and makespan
+        OptimizationResult with job schedule and makespan
     """
     start_time = time.time()
 
@@ -131,60 +134,60 @@ def solve_job_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
         # Create CP-SAT model
         model = cp_model.CpModel()
 
-        # Variables
-        task_vars = {}  # (job_id, task_idx) -> (start_var, end_var, interval_var)
-        machine_intervals: dict[int, list[Any]] = {
-            machine_idx: [] for machine_idx in range(len(machines))
-        }
+        # Variables for each task: (start_time, end_time, interval)
+        task_vars: dict[tuple, tuple] = {}
+        machine_intervals: dict[int, list] = {i: [] for i in range(len(machines))}
 
         # Create variables for each task
         for job in jobs:
             for task_idx, task in enumerate(job.tasks):
-                start_var = model.NewIntVar(job.release_time, horizon, f"start_{job.id}_{task_idx}")
+                suffix = f"_{job.id}_{task_idx}"
+                start_var = model.NewIntVar(0, horizon, f"start{suffix}")
                 duration = task.duration + task.setup_time
-                end_var = model.NewIntVar(job.release_time, horizon, f"end_{job.id}_{task_idx}")
+                end_var = model.NewIntVar(0, horizon, f"end{suffix}")
                 interval_var = model.NewIntervalVar(
-                    start_var, duration, end_var, f"interval_{job.id}_{task_idx}"
+                    start_var, duration, end_var, f"interval{suffix}"
                 )
 
                 task_vars[(job.id, task_idx)] = (start_var, end_var, interval_var)
                 machine_intervals[task.machine].append(interval_var)
 
-        # Precedence constraints within jobs
+        # Add precedence constraints within jobs
         for job in jobs:
             for task_idx in range(len(job.tasks) - 1):
-                current_end = task_vars[(job.id, task_idx)][1]
-                next_start = task_vars[(job.id, task_idx + 1)][0]
-                model.Add(current_end <= next_start)
+                _, end_var, _ = task_vars[(job.id, task_idx)]
+                start_var_next, _, _ = task_vars[(job.id, task_idx + 1)]
+                model.Add(end_var <= start_var_next)
 
-        # Machine capacity constraints (no overlap)
-        for _machine_idx, intervals in machine_intervals.items():
-            if intervals:
-                model.AddNoOverlap(intervals)
+        # Add machine capacity constraints (no overlap)
+        for machine_idx in range(len(machines)):
+            if machine_intervals[machine_idx]:
+                model.AddNoOverlap(machine_intervals[machine_idx])
 
-        # Deadline constraints
+        # Add release time constraints
+        for job in jobs:
+            if job.release_time > 0:
+                start_var, _, _ = task_vars[(job.id, 0)]
+                model.Add(start_var >= job.release_time)
+
+        # Add deadline constraints
         for job in jobs:
             if job.deadline is not None:
-                last_task_idx = len(job.tasks) - 1
-                last_task_end = task_vars[(job.id, last_task_idx)][1]
-                model.Add(last_task_end <= job.deadline)
+                _, end_var, _ = task_vars[(job.id, len(job.tasks) - 1)]
+                model.Add(end_var <= job.deadline)
 
-        # Objective
+        # Objective: minimize makespan or total completion time
         if scheduling_input.objective == "makespan":
-            # Minimize makespan (maximum completion time)
             makespan = model.NewIntVar(0, horizon, "makespan")
             for job in jobs:
-                last_task_idx = len(job.tasks) - 1
-                last_task_end = task_vars[(job.id, last_task_idx)][1]
-                model.AddMaxEquality(makespan, [last_task_end])
+                _, end_var, _ = task_vars[(job.id, len(job.tasks) - 1)]
+                model.Add(makespan >= end_var)
             model.Minimize(makespan)
         else:  # total_completion_time
-            # Minimize total completion time
             completion_times = []
             for job in jobs:
-                last_task_idx = len(job.tasks) - 1
-                last_task_end = task_vars[(job.id, last_task_idx)][1]
-                completion_times.append(last_task_end * job.priority)
+                _, end_var, _ = task_vars[(job.id, len(job.tasks) - 1)]
+                completion_times.append(end_var)
             model.Minimize(sum(completion_times))
 
         # Solve
@@ -192,7 +195,7 @@ def solve_job_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
         solver.parameters.max_time_in_seconds = scheduling_input.time_limit_seconds
         status = solver.Solve(model)
 
-        if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
+        if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:  # type: ignore[comparison-overlap,unused-ignore]
             # Extract solution
             schedule = []
             job_completion_times = {}
@@ -235,7 +238,7 @@ def solve_job_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
 
             return OptimizationResult(
                 status=OptimizationStatus.OPTIMAL
-                if status == cp_model.OPTIMAL
+                if status == cp_model.OPTIMAL  # type: ignore[comparison-overlap,unused-ignore]
                 else OptimizationStatus.FEASIBLE,
                 objective_value=float(
                     makespan  # type: ignore[arg-type]
@@ -261,7 +264,7 @@ def solve_job_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
             status_name = solver.StatusName(status)
             return OptimizationResult(
                 status=OptimizationStatus.INFEASIBLE
-                if status == cp_model.INFEASIBLE
+                if status == cp_model.INFEASIBLE  # type: ignore[comparison-overlap,unused-ignore]
                 else OptimizationStatus.ERROR,
                 error_message=f"No solution found: {status_name}",
                 execution_time=time.time() - start_time,
@@ -387,97 +390,60 @@ def solve_shift_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
             for day in range(days)
         )
 
-        preference_score = 0
+        # Add preference bonus
+        preference_bonus = 0
         for emp_idx, employee in enumerate(employees):
             emp_constraints = employee_constraints.get(employee, EmployeeConstraints())
             for shift_name in emp_constraints.preferred_shifts:
                 for shift_idx, shift in enumerate(shifts):
                     if shift.name == shift_name:
-                        preference_score += sum(
+                        preference_bonus += sum(
                             assignments[emp_idx][shift_idx][day] for day in range(days)
                         )
 
-        # Minimize total assignments while maximizing preferences
-        model.Minimize(total_assignments - preference_score)
+        # Minimize negative preference (maximize preference)
+        model.Minimize(total_assignments - preference_bonus)
 
         # Solve
         solver = cp_model.CpSolver()
         solver.parameters.max_time_in_seconds = scheduling_input.time_limit_seconds
         status = solver.Solve(model)
 
-        if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
+        if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:  # type: ignore[comparison-overlap,unused-ignore]
             # Extract solution
             schedule = []
-            employee_stats = {}
+            total_cost = 0
 
             for emp_idx, employee in enumerate(employees):
                 employee_schedule = []
-                total_shifts = 0
-
                 for day in range(days):
-                    day_assignments = []
+                    day_shifts = []
                     for shift_idx, shift in enumerate(shifts):
                         if solver.Value(assignments[emp_idx][shift_idx][day]):
-                            day_assignments.append(
+                            day_shifts.append(
                                 {
                                     "shift_name": shift.name,
-                                    "start_time": shift.start,
-                                    "end_time": shift.end,
+                                    "start": shift.start,
+                                    "end": shift.end,
                                     "skills_required": shift.skills_required,
                                 }
                             )
-                            total_shifts += 1
+                            total_cost += 1
 
-                    employee_schedule.append({"day": day, "shifts": day_assignments})
+                    employee_schedule.append({"day": day, "shifts": day_shifts})
 
-                employee_stats[employee] = {
-                    "total_shifts": total_shifts,
-                    "schedule": employee_schedule,
-                }
-
-                schedule.append(
-                    {
-                        "employee": employee,
-                        "total_shifts": total_shifts,
-                        "daily_schedule": employee_schedule,
-                    }
-                )
-
-            # Calculate coverage statistics
-            coverage_stats = []
-            for day in range(days):
-                day_coverage = []
-                for shift_idx, shift in enumerate(shifts):
-                    assigned_count = sum(
-                        int(solver.Value(assignments[emp_idx][shift_idx][day]))
-                        for emp_idx in range(len(employees))
-                    )
-                    day_coverage.append(
-                        {
-                            "shift_name": shift.name,
-                            "required_staff": shift.required_staff,
-                            "assigned_staff": assigned_count,
-                            "coverage_ratio": assigned_count / shift.required_staff
-                            if shift.required_staff > 0
-                            else 1.0,
-                        }
-                    )
-                coverage_stats.append({"day": day, "shifts": day_coverage})
+                schedule.append({"employee": employee, "schedule": employee_schedule})
 
             execution_time = time.time() - start_time
 
             return OptimizationResult(
                 status=OptimizationStatus.OPTIMAL
-                if status == cp_model.OPTIMAL
+                if status == cp_model.OPTIMAL  # type: ignore[comparison-overlap,unused-ignore]
                 else OptimizationStatus.FEASIBLE,
-                objective_value=float(solver.ObjectiveValue()),
+                objective_value=float(total_cost),
                 variables={
                     "schedule": schedule,
-                    "employee_stats": employee_stats,
-                    "coverage_stats": coverage_stats,
-                    "total_assignments": sum(
-                        emp["total_shifts"] for emp in employee_stats.values()
-                    ),
+                    "total_assignments": total_cost,
                     "num_employees": len(employees),
                     "num_shifts": len(shifts),
                     "num_days": days,
@@ -492,7 +458,7 @@ def solve_shift_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
             status_name = solver.StatusName(status)
             return OptimizationResult(
                 status=OptimizationStatus.INFEASIBLE
-                if status == cp_model.INFEASIBLE
+                if status == cp_model.INFEASIBLE  # type: ignore[comparison-overlap,unused-ignore]
                 else OptimizationStatus.ERROR,
                 error_message=f"No solution found: {status_name}",
                 execution_time=time.time() - start_time,
@@ -538,7 +504,7 @@ def register_scheduling_tools(mcp: FastMCP[Any]) -> None:
         }
 
         result = solve_job_scheduling(input_data)
-        return result.model_dump()
+        return result.to_dict()
 
     @mcp.tool()
     def solve_employee_shift_scheduling(
@@ -569,4 +535,6 @@ def register_scheduling_tools(mcp: FastMCP[Any]) -> None:
         }
 
         result = solve_shift_scheduling(input_data)
-        return result.model_dump()
+        return result.to_dict()
+
+    logger.info("Registered scheduling tools")
