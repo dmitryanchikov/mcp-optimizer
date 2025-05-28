@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+## [0.3.6] - 2025-05-28
+
+### Fixed
+- **CLI Entry Point**: Fixed CLI command execution error with coroutine handling
+  - Corrected entry point in `pyproject.toml` from `main` to `cli_main` function
+  - Resolved `<coroutine object main>` error when running `uvx mcp-optimizer`
+  - Fixed `RuntimeWarning: coroutine 'main' was never awaited` issue
+- **Release Candidate Documentation**: Corrected installation instructions for RC builds
+  - Removed incorrect PyPI installation info (RC packages are not published to PyPI)
+  - Added proper GitHub Release download instructions for testing RC builds
+  - Clarified that release candidates are only available via GitHub Release artifacts
+- **Repository Documentation**: Fixed status check names in setup documentation
+  - Corrected `ci` → `test (3.11)`, `test (3.12)` in branch protection requirements
+  - Corrected `security-scan` → `security` to match actual CI job names
+  - Updated both `REPOSITORY_SETUP.md` and `RELEASE_PROCESS.md` with accurate job names
+
+### Changed
+- **Version**: Bumped to 0.3.7 for next development cycle
+
 ## [0.3.5] - 2025-05-28
 
 ### Fixed
