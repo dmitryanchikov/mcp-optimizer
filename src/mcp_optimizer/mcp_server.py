@@ -4,9 +4,10 @@ import logging
 from typing import Any
 
 try:
-    from importlib.metadata import version
+    from importlib.metadata import version as get_version
 except ImportError:
-    from importlib_metadata import version  # Python < 3.8 fallback
+    # Python < 3.8 fallback - but we require 3.11+, so this is just for type checking
+    from importlib_metadata import version as get_version  # type: ignore[import-untyped]
 
 from fastmcp import FastMCP
 
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 # Get package version dynamically
 try:
-    __version__ = version("mcp-optimizer")
+    __version__ = get_version("mcp-optimizer")
 except Exception:
     __version__ = "unknown"
 
