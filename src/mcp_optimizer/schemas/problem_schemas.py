@@ -89,12 +89,8 @@ class AssignmentResult(BaseOptimizationResult):
 class TransportationRequest(OptimizationRequest):
     """Request schema for transportation problems."""
 
-    suppliers: list[dict[str, Any]] = Field(
-        description="List of suppliers with supply amounts"
-    )
-    consumers: list[dict[str, Any]] = Field(
-        description="List of consumers with demand amounts"
-    )
+    suppliers: list[dict[str, Any]] = Field(description="List of suppliers with supply amounts")
+    consumers: list[dict[str, Any]] = Field(description="List of consumers with demand amounts")
     costs: list[list[float]] = Field(
         description="Transportation cost matrix (suppliers x consumers)"
     )

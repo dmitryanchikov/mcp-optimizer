@@ -147,9 +147,7 @@ def register_linear_programming_tools(mcp: FastMCP[Any]) -> None:
                 ]
             )
         """
-        return solve_linear_program(
-            objective, variables, constraints, solver, time_limit_seconds
-        )
+        return solve_linear_program(objective, variables, constraints, solver, time_limit_seconds)
 
     @mcp.tool()
     def solve_integer_program_tool(
@@ -195,8 +193,6 @@ def register_linear_programming_tools(mcp: FastMCP[Any]) -> None:
                 ]
             )
         """
-        return solve_integer_program(
-            objective, variables, constraints, solver, time_limit_seconds
-        )
+        return solve_integer_program(objective, variables, constraints, solver, time_limit_seconds)
 
     logger.info("Registered linear programming tools")

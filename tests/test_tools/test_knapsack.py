@@ -221,9 +221,7 @@ class TestKnapsackSolverTypes:
         ]
         capacity = 20
 
-        solver = knapsack_solver.KnapsackSolver(
-            knapsack_solver.KNAPSACK_64ITEMS_SOLVER, "64Items"
-        )
+        solver = knapsack_solver.KnapsackSolver(knapsack_solver.KNAPSACK_64ITEMS_SOLVER, "64Items")
 
         values = [int(item["value"] * 1000) for item in items]
         weights = [int(item["weight"] * 1000) for item in items]

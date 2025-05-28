@@ -72,9 +72,7 @@ def validate_linear_program(data: dict[str, Any]) -> ValidationResult:
                 errors.append(f"Constraint {i} rhs must be a number")
 
     # Check variable consistency
-    if isinstance(data.get("objective"), dict) and isinstance(
-        data.get("variables"), dict
-    ):
+    if isinstance(data.get("objective"), dict) and isinstance(data.get("variables"), dict):
         obj_vars = set(data["objective"].get("coefficients", {}).keys())
         defined_vars = set(data["variables"].keys())
 
@@ -84,15 +82,11 @@ def validate_linear_program(data: dict[str, Any]) -> ValidationResult:
 
         unused_vars = defined_vars - obj_vars
         if unused_vars:
-            warnings.append(
-                f"Defined variables not used in objective: {list(unused_vars)}"
-            )
+            warnings.append(f"Defined variables not used in objective: {list(unused_vars)}")
 
     # Suggestions
     if not errors:
-        suggestions.append(
-            "Consider adding variable bounds for better numerical stability"
-        )
+        suggestions.append("Consider adding variable bounds for better numerical stability")
         suggestions.append("Use descriptive names for variables and constraints")
 
     return ValidationResult(
@@ -153,12 +147,8 @@ def validate_assignment_problem(data: dict[str, Any]) -> ValidationResult:
         tasks_count = len(data["tasks"])
 
         if workers_count != tasks_count:
-            warnings.append(
-                f"Unbalanced assignment: {workers_count} workers, {tasks_count} tasks"
-            )
-            suggestions.append(
-                "Consider adding dummy workers/tasks for balanced assignment"
-            )
+            warnings.append(f"Unbalanced assignment: {workers_count} workers, {tasks_count} tasks")
+            suggestions.append("Consider adding dummy workers/tasks for balanced assignment")
 
     return ValidationResult(
         is_valid=len(errors) == 0,
@@ -203,18 +193,12 @@ def validate_knapsack_problem(data: dict[str, Any]) -> ValidationResult:
                         errors.append(f"Item {i} value must be a non-negative number")
 
                 if "weight" in item:
-                    if (
-                        not isinstance(item["weight"], (int, float))
-                        or item["weight"] < 0
-                    ):
+                    if not isinstance(item["weight"], (int, float)) or item["weight"] < 0:
                         errors.append(f"Item {i} weight must be a non-negative number")
 
                 # Check optional volume field
                 if "volume" in item:
-                    if (
-                        not isinstance(item["volume"], (int, float))
-                        or item["volume"] < 0
-                    ):
+                    if not isinstance(item["volume"], (int, float)) or item["volume"] < 0:
                         errors.append(f"Item {i} volume must be a non-negative number")
 
     if "capacity" in data:
@@ -223,10 +207,7 @@ def validate_knapsack_problem(data: dict[str, Any]) -> ValidationResult:
 
     # Check optional volume capacity
     if "volume_capacity" in data:
-        if (
-            not isinstance(data["volume_capacity"], (int, float))
-            or data["volume_capacity"] <= 0
-        ):
+        if not isinstance(data["volume_capacity"], (int, float)) or data["volume_capacity"] <= 0:
             errors.append("Volume capacity must be a positive number")
 
     # Check knapsack type
@@ -254,9 +235,7 @@ def validate_knapsack_problem(data: dict[str, Any]) -> ValidationResult:
 
     if not errors:
         suggestions.append("Consider using realistic item values and weights")
-        suggestions.append(
-            "For large problems, consider using bounded or unbounded knapsack types"
-        )
+        suggestions.append("For large problems, consider using bounded or unbounded knapsack types")
 
     return ValidationResult(
         is_valid=len(errors) == 0,
@@ -292,10 +271,7 @@ def validate_transportation_problem(data: dict[str, Any]) -> ValidationResult:
                     errors.append(f"Supplier {i} missing required field: name")
                 if "supply" not in supplier:
                     errors.append(f"Supplier {i} missing required field: supply")
-                elif (
-                    not isinstance(supplier["supply"], int | float)
-                    or supplier["supply"] < 0
-                ):
+                elif not isinstance(supplier["supply"], int | float) or supplier["supply"] < 0:
                     errors.append(f"Supplier {i} supply must be a non-negative number")
 
     if "consumers" in data:
@@ -312,10 +288,7 @@ def validate_transportation_problem(data: dict[str, Any]) -> ValidationResult:
                     errors.append(f"Consumer {i} missing required field: name")
                 if "demand" not in consumer:
                     errors.append(f"Consumer {i} missing required field: demand")
-                elif (
-                    not isinstance(consumer["demand"], int | float)
-                    or consumer["demand"] < 0
-                ):
+                elif not isinstance(consumer["demand"], int | float) or consumer["demand"] < 0:
                     errors.append(f"Consumer {i} demand must be a non-negative number")
 
     if "costs" in data:
@@ -350,12 +323,8 @@ def validate_transportation_problem(data: dict[str, Any]) -> ValidationResult:
         total_demand = sum(consumer.get("demand", 0) for consumer in data["consumers"])
 
         if abs(total_supply - total_demand) > 1e-6:
-            errors.append(
-                f"Total supply ({total_supply}) must equal total demand ({total_demand})"
-            )
-            suggestions.append(
-                "Consider adding dummy suppliers/consumers to balance the problem"
-            )
+            errors.append(f"Total supply ({total_supply}) must equal total demand ({total_demand})")
+            suggestions.append("Consider adding dummy suppliers/consumers to balance the problem")
 
     if not errors:
         suggestions.append("Ensure cost matrix represents actual transportation costs")
@@ -561,9 +530,7 @@ def register_validation_tools(mcp: FastMCP[Any]) -> None:
             if prob_type == ProblemType.LINEAR_PROGRAM:
                 result = validate_linear_program(input_data)
             elif prob_type == ProblemType.INTEGER_PROGRAM:
-                result = validate_linear_program(
-                    input_data
-                )  # Same validation as linear program
+                result = validate_linear_program(input_data)  # Same validation as linear program
             elif prob_type == ProblemType.ASSIGNMENT:
                 result = validate_assignment_problem(input_data)
             elif prob_type == ProblemType.TRANSPORTATION:
@@ -586,9 +553,7 @@ def register_validation_tools(mcp: FastMCP[Any]) -> None:
                     is_valid=False,
                     errors=[f"Validation not yet implemented for {problem_type}"],
                     warnings=[],
-                    suggestions=[
-                        "This problem type will be supported in future versions"
-                    ],
+                    suggestions=["This problem type will be supported in future versions"],
                 )
 
             logger.info(

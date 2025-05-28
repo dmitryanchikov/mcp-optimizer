@@ -107,9 +107,7 @@ class TestPuLPSolver:
 
         # Check that variables are binary (0 or 1)
         for var_name, value in result["variables"].items():
-            assert value in [0, 1], (
-                f"Variable {var_name} should be binary but got {value}"
-            )
+            assert value in [0, 1], f"Variable {var_name} should be binary but got {value}"
 
     def test_integer_variables(self):
         """Test solving with integer variables."""
@@ -138,9 +136,7 @@ class TestPuLPSolver:
 
         # Check that variables are integers
         for var_name, value in result["variables"].items():
-            assert value == int(value), (
-                f"Variable {var_name} should be integer but got {value}"
-            )
+            assert value == int(value), f"Variable {var_name} should be integer but got {value}"
 
     def test_mixed_variable_types(self):
         """Test solving with mixed variable types."""
@@ -198,9 +194,7 @@ class TestPuLPSolver:
         ]
 
         solver = PuLPSolver()
-        result = solver.solve_linear_program(
-            objective, variables, constraints, time_limit=0.1
-        )
+        result = solver.solve_linear_program(objective, variables, constraints, time_limit=0.1)
 
         # Should still solve this simple problem quickly
         assert result["status"] == OptimizationStatus.OPTIMAL.value

@@ -46,7 +46,7 @@ Then add to your Claude Desktop config:
 
 **Option 3: Using Docker**
 
-*Method A: Docker with stdio (Recommended)*
+*Method A: Docker with STDIO transport (Recommended for MCP clients)*
 ```bash
 docker pull ghcr.io/dmitryanchikov/mcp-optimizer:latest
 ```
@@ -66,9 +66,15 @@ Then add to your Claude Desktop config:
 }
 ```
 
-*Method B: Docker as HTTP server (for advanced users)*
+*Method B: Docker with SSE transport (for HTTP/web clients)*
 ```bash
-docker run -d -p 8000:8000 ghcr.io/dmitryanchikov/mcp-optimizer:latest
+# Run SSE server on port 8000
+docker run -d -p 8000:8000 ghcr.io/dmitryanchikov/mcp-optimizer:latest \
+  python -m mcp_optimizer.main --transport sse --host 0.0.0.0
+
+# Or with custom port
+docker run -d -p 9000:9000 ghcr.io/dmitryanchikov/mcp-optimizer:latest \
+  python -m mcp_optimizer.main --transport sse --host 0.0.0.0 --port 9000
 ```
 Then use HTTP client to connect to `http://localhost:8000` (requires additional MCP HTTP client setup)
 
@@ -106,6 +112,28 @@ uv sync --extra dev
 uv run python main.py
 ```
 
+#### Local Package Build and Run
+
+For testing and development, you can build the package locally and run it with uvx:
+
+```bash
+# Build the package locally
+uv build
+
+# Run with uvx from local wheel file
+uvx --from ./dist/mcp_optimizer-0.3.9-py3-none-any.whl mcp-optimizer
+
+# Or run with help to see available options
+uvx --from ./dist/mcp_optimizer-0.3.9-py3-none-any.whl mcp-optimizer --help
+
+# Test the local package with a simple MCP message
+echo '{"jsonrpc": "2.0", "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test", "version": "1.0"}}, "id": 1}' | uvx --from ./dist/mcp_optimizer-0.3.9-py3-none-any.whl mcp-optimizer
+```
+
+**Note**: The local build creates both wheel (`.whl`) and source distribution (`.tar.gz`) files in the `dist/` directory. The wheel file is recommended for uvx installation as it's faster and doesn't require compilation.
+
+**Troubleshooting**: If you encounter event loop issues when using uvx, the package includes automatic detection and handling of existing event loops using `nest-asyncio`.
+
 #### Docker with Custom Configuration
 ```bash
 # Build locally with optimization
@@ -136,6 +164,54 @@ mcp-optimizer
 python main.py
 ```
 
+#### Transport Modes
+
+MCP Optimizer supports two transport protocols:
+- **STDIO**: Standard input/output for direct MCP client integration (Claude Desktop, Cursor, etc.)
+- **SSE**: Server-Sent Events over HTTP for web-based clients and custom integrations
+
+**STDIO Transport (Default - for MCP clients like Claude Desktop)**
+```bash
+# Default STDIO mode for MCP protocol
+uvx mcp-optimizer
+# or
+uvx mcp-optimizer --transport stdio
+# or
+uv run python -m mcp_optimizer.main --transport stdio
+# or
+python main.py
+```
+
+**SSE Transport (for HTTP/web clients)**
+```bash
+# SSE mode for HTTP clients (default port 8000)
+uvx mcp-optimizer --transport sse
+# or
+uv run python -m mcp_optimizer.main --transport sse
+
+# Custom host and port
+uvx mcp-optimizer --transport sse --host 0.0.0.0 --port 9000
+# or
+uv run python -m mcp_optimizer.main --transport sse --host 0.0.0.0 --port 9000
+
+# With debug mode
+uvx mcp-optimizer --transport sse --debug --log-level DEBUG
+```
+
+**Available CLI Options**
+```bash
+# Show all available options
+uvx mcp-optimizer --help
+
+# Options:
+#   --transport {stdio,sse}    MCP transport protocol (default: stdio)
+#   --port PORT               Port for SSE transport (default: 8000)
+#   --host HOST               Host for SSE transport (default: 127.0.0.1)
+#   --debug                   Enable debug mode
+#   --reload                  Enable auto-reload for development
+#   --log-level {DEBUG,INFO,WARNING,ERROR}  Logging level (default: INFO)
+```
+
 ## 🎯 Features
 
 ### Supported Optimization Problem Types:
@@ -152,7 +228,7 @@ python main.py
 ### Testing
 ```bash
 # Run simple functionality tests
-uv run python simple_test.py
+uv run python tests/test_integration/comprehensive_test.py
 
 # Run comprehensive integration tests
 uv run python tests/test_integration/comprehensive_test.py
