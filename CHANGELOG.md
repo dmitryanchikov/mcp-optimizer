@@ -276,4 +276,11 @@ First stable release with core optimization capabilities and MCP server integrat
 For questions, issues, or contributions:
 - 📧 Email: support@mcp-optimizer.com
 - 🐛 Issues: [GitHub Issues](https://github.com/dmitryanchikov/mcp-optimizer/issues)
-- 📖 Documentation: [docs/](docs/) 
+- 📖 Documentation: [docs/](docs/)
+
+### Removed
+- **Development Tools**: Removed outdated `scripts/test_release_detection.py`
+  - File contained obsolete simple regex patterns that don't match current triple-fallback detection system
+  - Current detection logic is thoroughly tested in production CI/CD pipeline
+  - Removed references from documentation to avoid confusion
+  - Real-world testing in CI/CD provides better validation than isolated test script 
