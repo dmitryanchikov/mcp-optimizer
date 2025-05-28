@@ -1,6 +1,6 @@
 [project]
 name = "mcp-optimizer"
-version = "0.3.6"
+version = "0.3.7"
 description = "MCP server for mathematical optimization problems using PuLP and OR-Tools"
 readme = "README.md"
 requires-python = ">=3.11"
