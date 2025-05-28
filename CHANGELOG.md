@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fixed Docker metadata tag generation for release and hotfix branches to properly extract version from branch names
+
 ## [0.3.7] - 2025-05-28
 
 ### Fixed

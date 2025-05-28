@@ -112,6 +112,19 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Extract version from branch name
+      id: version
+      run: |
+        if [[ "${{ github.ref }}" == refs/heads/release/* ]]; then
+          VERSION=$(echo "${{ github.ref_name }}" | sed 's/release\///')
+          echo "tag=${VERSION}-rc" >> $GITHUB_OUTPUT
+        elif [[ "${{ github.ref }}" == refs/heads/hotfix/* ]]; then
+          VERSION=$(echo "${{ github.ref_name }}" | sed 's/hotfix\///')
+          echo "tag=${VERSION}-hotfix" >> $GITHUB_OUTPUT
+        else
+          echo "tag=" >> $GITHUB_OUTPUT
+        fi
+
     - name: Extract metadata
       id: meta
       uses: docker/metadata-action@v5
@@ -119,8 +132,7 @@ jobs:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
           type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
-          type=match,pattern=refs/heads/release/v(.*),group=1,prefix=v,suffix=-rc,enable=${{ startsWith(github.ref, 'refs/heads/release/') }}
-          type=match,pattern=refs/heads/hotfix/v(.*),group=1,prefix=v,suffix=-hotfix,enable=${{ startsWith(github.ref, 'refs/heads/hotfix/') }}
+          type=raw,value=${{ steps.version.outputs.tag }},enable=${{ steps.version.outputs.tag != '' }}
           type=sha,prefix=main-,enable=${{ github.ref == 'refs/heads/main' }}
 
     - name: Debug metadata output
