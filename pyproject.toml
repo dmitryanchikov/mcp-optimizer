@@ -40,7 +40,7 @@ dev = [
 ]
 
 [project.scripts]
-mcp-optimizer = "mcp_optimizer.main:main"
+mcp-optimizer = "mcp_optimizer.main:cli_main"
 
 [project.urls]
 Homepage = "https://github.com/your-org/mcp-optimizer"
