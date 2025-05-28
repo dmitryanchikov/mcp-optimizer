@@ -133,7 +133,7 @@ jobs:
         tags: |
           type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
           type=raw,value=${{ steps.version.outputs.tag }},enable=${{ steps.version.outputs.tag != '' }}
-          type=sha,prefix=main-,enable=${{ github.ref == 'refs/heads/main' }}
+          type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
 
     - name: Debug metadata output
       run: |

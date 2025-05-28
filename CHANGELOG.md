@@ -7,9 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-- Fixed Docker metadata tag generation for release and hotfix branches to properly extract version from branch names
-
 ## [0.3.7] - 2025-05-28
 
 ### Fixed
@@ -26,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Corrected tag patterns to use full ref paths (`refs/heads/release/v*` instead of `release/v*`)
   - Resolves "tag is needed when pushing to registry" error for release branches
   - Ensures proper RC and hotfix Docker image tagging
+  - Fixed Docker metadata tag generation for release and hotfix branches to properly extract version from branch names
+  - Fixed hardcoded version in `mcp_server.py` to use dynamic version from package metadata instead of outdated `0.1.0`
+  - Improved Docker tagging strategy to follow industry best practices: `main` branch now uses `main` tag instead of `main-<sha>`
 - **Development Tools**: Removed outdated `scripts/test_release_detection.py`
   - File contained obsolete simple regex patterns that don't match current triple-fallback detection system
   - Current detection logic is thoroughly tested in production CI/CD pipeline

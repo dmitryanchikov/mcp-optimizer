@@ -3,6 +3,11 @@
 import logging
 from typing import Any
 
+try:
+    from importlib.metadata import version
+except ImportError:
+    from importlib_metadata import version  # Python < 3.8 fallback
+
 from fastmcp import FastMCP
 
 from mcp_optimizer.config import settings
@@ -18,6 +23,12 @@ from mcp_optimizer.tools.validation import register_validation_tools
 
 logger = logging.getLogger(__name__)
 
+# Get package version dynamically
+try:
+    __version__ = version("mcp-optimizer")
+except Exception:
+    __version__ = "unknown"
+
 
 def create_mcp_server() -> FastMCP[Any]:
     """Create and configure MCP server with optimization tools."""
@@ -25,7 +36,7 @@ def create_mcp_server() -> FastMCP[Any]:
     # Create FastMCP server instance
     mcp: FastMCP[Any] = FastMCP(
         name="mcp-optimizer",
-        version="0.1.0",
+        version=__version__,
         description="Mathematical optimization server using PuLP and OR-Tools",
     )
 
@@ -39,7 +50,7 @@ def create_mcp_server() -> FastMCP[Any]:
         """
         return {
             "name": "MCP Optimizer",
-            "version": "0.1.0",
+            "version": __version__,
             "description": "Mathematical optimization server using PuLP and OR-Tools",
             "capabilities": [
                 "linear_programming",
