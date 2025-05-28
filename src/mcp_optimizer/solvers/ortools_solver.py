@@ -126,9 +126,7 @@ class ORToolsSolver:
                         ),
                     )
 
-                    logger.info(
-                        f"Assignment problem solved optimally in {execution_time:.3f}s"
-                    )
+                    logger.info(f"Assignment problem solved optimally in {execution_time:.3f}s")
                     return result.model_dump()
 
                 else:
@@ -255,9 +253,7 @@ class ORToolsSolver:
                     ),
                 )
 
-                logger.info(
-                    f"Assignment problem with constraints solved in {execution_time:.3f}s"
-                )
+                logger.info(f"Assignment problem with constraints solved in {execution_time:.3f}s")
                 return result.model_dump()
 
             elif status == pywraplp.Solver.INFEASIBLE:
@@ -395,9 +391,7 @@ class ORToolsSolver:
                     ),
                 )
 
-                logger.info(
-                    f"Transportation problem solved optimally in {execution_time:.3f}s"
-                )
+                logger.info(f"Transportation problem solved optimally in {execution_time:.3f}s")
                 return result.model_dump()
 
             elif status == pywraplp.Solver.INFEASIBLE:

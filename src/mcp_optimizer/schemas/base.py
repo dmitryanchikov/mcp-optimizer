@@ -58,9 +58,7 @@ class ProblemType(str, Enum):
 class BaseOptimizationResult(BaseModel):
     """Base result schema for optimization problems."""
 
-    status: OptimizationStatus = Field(
-        description="Status of the optimization solution"
-    )
+    status: OptimizationStatus = Field(description="Status of the optimization solution")
     objective_value: float | None = Field(
         default=None,
         description="Value of the objective function",

@@ -62,9 +62,7 @@ class TestAssignmentTools:
         ]
 
         solver = ORToolsSolver()
-        result = solver.solve_assignment_problem(
-            workers, tasks, costs, max_tasks_per_worker=2
-        )
+        result = solver.solve_assignment_problem(workers, tasks, costs, max_tasks_per_worker=2)
 
         assert result["status"] == "optimal"
         assert len(result["assignments"]) <= 4  # Max 2 tasks per worker

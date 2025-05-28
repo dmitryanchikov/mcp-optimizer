@@ -122,9 +122,7 @@ class TestLinearProgrammingTools:
         ]
 
         solver = PuLPSolver()
-        result = solver.solve_linear_program(
-            objective, variables, constraints, time_limit=0.1
-        )
+        result = solver.solve_linear_program(objective, variables, constraints, time_limit=0.1)
 
         # Should still solve this simple problem
         assert result["status"] == "optimal"

@@ -49,9 +49,7 @@ class IntegerProgramInput(BaseModel):
     gap_tolerance: float | None = Field(default=None, ge=0, le=1)
 
     @validator("variables")
-    def validate_variables(
-        cls, v: dict[str, IntegerVariable]
-    ) -> dict[str, IntegerVariable]:
+    def validate_variables(cls, v: dict[str, IntegerVariable]) -> dict[str, IntegerVariable]:
         if not v:
             raise ValueError("At least one variable required")
         return v
@@ -143,9 +141,7 @@ def solve_integer_program(input_data: dict[str, Any]) -> OptimizationResult:
             constraint_name = constraint_def.name or f"constraint_{i}"
 
             # Build constraint expression
-            constraint = solver.Constraint(
-                -solver.infinity(), solver.infinity(), constraint_name
-            )
+            constraint = solver.Constraint(-solver.infinity(), solver.infinity(), constraint_name)
 
             for var_name, coeff in constraint_def.expression.items():
                 if var_name in variables:
@@ -187,9 +183,7 @@ def solve_integer_program(input_data: dict[str, Any]) -> OptimizationResult:
 
         # Set gap tolerance if specified
         if ip_input.gap_tolerance is not None:
-            solver.SetSolverSpecificParametersAsString(
-                f"limits/gap={ip_input.gap_tolerance}"
-            )
+            solver.SetSolverSpecificParametersAsString(f"limits/gap={ip_input.gap_tolerance}")
 
         # Solve
         status = solver.Solve()
@@ -243,14 +237,11 @@ def solve_integer_program(input_data: dict[str, Any]) -> OptimizationResult:
                 execution_time=execution_time,
                 solver_info={
                     "solver_name": solver_name,
-                    "iterations": solver.iterations()
-                    if hasattr(solver, "iterations")
-                    else None,
+                    "iterations": solver.iterations() if hasattr(solver, "iterations") else None,
                     "nodes": solver.nodes() if hasattr(solver, "nodes") else None,
                     "gap": (solver.Objective().BestBound() - solver.Objective().Value())
                     / abs(solver.Objective().Value())
-                    if solver.Objective().Value() != 0
-                    and hasattr(solver.Objective(), "BestBound")
+                    if solver.Objective().Value() != 0 and hasattr(solver.Objective(), "BestBound")
                     else 0,
                     "constraint_info": constraint_info,
                 },
@@ -265,9 +256,7 @@ def solve_integer_program(input_data: dict[str, Any]) -> OptimizationResult:
 
             return OptimizationResult(
                 status=solution_status,
-                error_message=error_messages.get(
-                    status, f"Unknown solver status: {status}"
-                ),
+                error_message=error_messages.get(status, f"Unknown solver status: {status}"),
                 execution_time=execution_time,
                 solver_info={"solver_name": solver_name},
             )

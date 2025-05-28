@@ -28,9 +28,7 @@ class TestORToolsSolver:
         assert result["execution_time"] > 0
 
         # Check that each worker is assigned exactly one task
-        assigned_workers = {
-            assignment["worker"] for assignment in result["assignments"]
-        }
+        assigned_workers = {assignment["worker"] for assignment in result["assignments"]}
         assert assigned_workers == set(workers)
 
         # Check that each task is assigned to exactly one worker
@@ -67,9 +65,7 @@ class TestORToolsSolver:
         ]
 
         solver = ORToolsSolver()
-        result = solver.solve_assignment_problem(
-            workers, tasks, costs, max_tasks_per_worker=2
-        )
+        result = solver.solve_assignment_problem(workers, tasks, costs, max_tasks_per_worker=2)
 
         assert result["status"] == OptimizationStatus.OPTIMAL.value
         assert result["total_cost"] is not None

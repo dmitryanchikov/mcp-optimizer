@@ -45,9 +45,7 @@ class JobSchedulingInput(BaseModel):
     jobs: list[Job]
     machines: list[str]
     horizon: int = Field(ge=1)
-    objective: str = Field(
-        default="makespan", pattern="^(makespan|total_completion_time)$"
-    )
+    objective: str = Field(default="makespan", pattern="^(makespan|total_completion_time)$")
     time_limit_seconds: float = Field(default=30.0, ge=0)
 
     @validator("jobs")
@@ -142,13 +140,9 @@ def solve_job_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
         # Create variables for each task
         for job in jobs:
             for task_idx, task in enumerate(job.tasks):
-                start_var = model.NewIntVar(
-                    job.release_time, horizon, f"start_{job.id}_{task_idx}"
-                )
+                start_var = model.NewIntVar(job.release_time, horizon, f"start_{job.id}_{task_idx}")
                 duration = task.duration + task.setup_time
-                end_var = model.NewIntVar(
-                    job.release_time, horizon, f"end_{job.id}_{task_idx}"
-                )
+                end_var = model.NewIntVar(job.release_time, horizon, f"end_{job.id}_{task_idx}")
                 interval_var = model.NewIntervalVar(
                     start_var, duration, end_var, f"interval_{job.id}_{task_idx}"
                 )
@@ -198,7 +192,7 @@ def solve_job_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
         solver.parameters.max_time_in_seconds = scheduling_input.time_limit_seconds
         status = solver.Solve(model)
 
-        if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:  # type: ignore[comparison-overlap]
+        if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
             # Extract solution
             schedule = []
             job_completion_times = {}
@@ -222,7 +216,7 @@ def solve_job_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
                         }
                     )
 
-                completion_time = max(task["end_time"] for task in job_schedule)  # type: ignore
+                completion_time = max(task["end_time"] for task in job_schedule)  # type: ignore[type-var]
                 job_completion_times[job.id] = completion_time
 
                 schedule.append(
@@ -234,17 +228,17 @@ def solve_job_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
                     }
                 )
 
-            makespan = max(job_completion_times.values()) if job_completion_times else 0  # type: ignore
-            total_completion_time = sum(job_completion_times.values())  # type: ignore
+            makespan = max(job_completion_times.values()) if job_completion_times else 0  # type: ignore[type-var,assignment]
+            total_completion_time = sum(job_completion_times.values())  # type: ignore[arg-type]
 
             execution_time = time.time() - start_time
 
             return OptimizationResult(
                 status=OptimizationStatus.OPTIMAL
-                if status == cp_model.OPTIMAL  # type: ignore[comparison-overlap]
+                if status == cp_model.OPTIMAL
                 else OptimizationStatus.FEASIBLE,
                 objective_value=float(
-                    makespan  # type: ignore
+                    makespan  # type: ignore[arg-type]
                     if scheduling_input.objective == "makespan"
                     else total_completion_time
                 ),
@@ -267,7 +261,7 @@ def solve_job_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
             status_name = solver.StatusName(status)
             return OptimizationResult(
                 status=OptimizationStatus.INFEASIBLE
-                if status == cp_model.INFEASIBLE  # type: ignore[comparison-overlap]
+                if status == cp_model.INFEASIBLE
                 else OptimizationStatus.ERROR,
                 error_message=f"No solution found: {status_name}",
                 execution_time=time.time() - start_time,
@@ -317,10 +311,7 @@ def solve_shift_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
         for shift_idx, shift in enumerate(shifts):
             for day in range(days):
                 model.Add(
-                    sum(
-                        assignments[emp_idx][shift_idx][day]
-                        for emp_idx in range(len(employees))
-                    )
+                    sum(assignments[emp_idx][shift_idx][day] for emp_idx in range(len(employees)))
                     >= shift.required_staff
                 )
 
@@ -356,8 +347,7 @@ def solve_shift_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
             for shift_idx, shift in enumerate(shifts):
                 if shift.skills_required:
                     has_required_skills = all(
-                        skill in emp_constraints.skills
-                        for skill in shift.skills_required
+                        skill in emp_constraints.skills for skill in shift.skills_required
                     )
                     if not has_required_skills:
                         for day in range(days):
@@ -387,9 +377,7 @@ def solve_shift_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
                             )
                         )
                         consecutive_vars.append(day_working)
-                    model.Add(
-                        sum(consecutive_vars) <= emp_constraints.max_consecutive_shifts
-                    )
+                    model.Add(sum(consecutive_vars) <= emp_constraints.max_consecutive_shifts)
 
         # Objective: Minimize total assignments (prefer fewer shifts) and maximize preferences
         total_assignments = sum(
@@ -417,7 +405,7 @@ def solve_shift_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
         solver.parameters.max_time_in_seconds = scheduling_input.time_limit_seconds
         status = solver.Solve(model)
 
-        if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:  # type: ignore[comparison-overlap]
+        if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
             # Extract solution
             schedule = []
             employee_stats = {}
@@ -480,7 +468,7 @@ def solve_shift_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
 
             return OptimizationResult(
                 status=OptimizationStatus.OPTIMAL
-                if status == cp_model.OPTIMAL  # type: ignore[comparison-overlap]
+                if status == cp_model.OPTIMAL
                 else OptimizationStatus.FEASIBLE,
                 objective_value=float(solver.ObjectiveValue()),
                 variables={
@@ -504,7 +492,7 @@ def solve_shift_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
             status_name = solver.StatusName(status)
             return OptimizationResult(
                 status=OptimizationStatus.INFEASIBLE
-                if status == cp_model.INFEASIBLE  # type: ignore[comparison-overlap]
+                if status == cp_model.INFEASIBLE
                 else OptimizationStatus.ERROR,
                 error_message=f"No solution found: {status_name}",
                 execution_time=time.time() - start_time,

@@ -35,7 +35,7 @@ def run_stdio_server() -> None:
     logging.info("Starting MCP Optimizer server with stdio transport")
 
     mcp_server = create_mcp_server()
-    
+
     # Use the simple run() method as recommended by FastMCP
     mcp_server.run(transport="stdio")
 
@@ -141,6 +141,7 @@ def main() -> None:
         else:
             # For SSE transport, we need async
             import asyncio
+
             asyncio.run(run_sse_server())
     except KeyboardInterrupt:
         logging.info("Server shutdown requested")

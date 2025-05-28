@@ -129,7 +129,7 @@ def solve_transportation_problem(
                     "error_message": f"Supplier {i} must have 'name' and 'supply' fields",
                 }
 
-        # Validate consumer format
+        # Validate consumer format  # type: ignore[unreachable]
         for i, consumer in enumerate(consumers):
             if not isinstance(consumer, dict):
                 return {
@@ -148,7 +148,7 @@ def solve_transportation_problem(
                     "error_message": f"Consumer {i} must have 'name' and 'demand' fields",
                 }
 
-        # Validate cost matrix dimensions
+        # Validate cost matrix dimensions  # type: ignore[unreachable]
         if len(costs) != len(suppliers):
             return {
                 "status": "error",
@@ -189,9 +189,7 @@ def solve_transportation_problem(
             costs=costs,
         )
 
-        logger.info(
-            f"Transportation problem solved with status: {result.get('status')}"
-        )
+        logger.info(f"Transportation problem solved with status: {result.get('status')}")
         return result
 
     except Exception as e:
