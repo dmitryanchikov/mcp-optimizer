@@ -66,7 +66,7 @@
 - [ ] Code comments added/updated
 - [ ] API documentation updated
 - [ ] README.md updated (if needed)
-- [ ] CHANGELOG.md updated
+- [ ] CHANGELOG.md updated (see [Changelog Guidelines](../CONTRIBUTING.md#-changelog-guidelines))
 - [ ] Examples updated/added
 - [ ] Migration guide provided (for breaking changes)
 
@@ -193,7 +193,7 @@ Improvement:
 - [ ] All tests pass locally
 - [ ] Code is properly formatted
 - [ ] Documentation is updated
-- [ ] CHANGELOG.md is updated
+- [ ] CHANGELOG.md is updated (see [Changelog Guidelines](../CONTRIBUTING.md#-changelog-guidelines))
 - [ ] Commit messages follow conventional format
 - [ ] Branch is up to date with target branch
 - [ ] No merge conflicts

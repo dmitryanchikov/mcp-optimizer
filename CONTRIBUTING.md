@@ -36,7 +36,7 @@ Thank you for your interest in contributing to MCP Optimizer! This document prov
 **`develop`**
 - **Purpose**: Integration branch for features
 - **Protection**: Protected, no direct pushes except hotfixes
-- **Merges from**: `feature/*`, `hotfix/*` branches
+- **Merges from**: `feature/*` branches
 - **Merges to**: `release/*` branches
 - **Stability**: Should be stable, but may contain experimental features
 
@@ -56,7 +56,7 @@ Thank you for your interest in contributing to MCP Optimizer! This document prov
 - **Purpose**: Prepare new production releases
 - **Naming**: `release/v{major}.{minor}.{patch}`
 - **Branches from**: `develop`
-- **Merges to**: `main` and `develop`
+- **Merges to**: `main`
 - **Lifetime**: Temporary, deleted after release
 - **Examples**: 
   - `release/v1.2.0`
@@ -66,11 +66,21 @@ Thank you for your interest in contributing to MCP Optimizer! This document prov
 - **Purpose**: Critical fixes for production issues
 - **Naming**: `hotfix/v{major}.{minor}.{patch}` or `hotfix/issue-description`
 - **Branches from**: `main`
-- **Merges to**: `main` and `develop`
+- **Merges to**: `main`
 - **Lifetime**: Temporary, deleted after merge
 - **Examples**: 
   - `hotfix/v1.1.1`
   - `hotfix/critical-security-fix`
+
+**`merge/*`**
+- **Purpose**: Automated merge-back from main to develop after releases
+- **Naming**: `merge/release-v{major}.{minor}.{patch}-to-develop`
+- **Branches from**: `main` (automated)
+- **Merges to**: `develop` via Pull Request
+- **Lifetime**: Temporary, deleted after merge
+- **Examples**: 
+  - `merge/release-v1.2.0-to-develop`
+  - `merge/hotfix-v1.1.1-to-develop`
 
 ### Branch Protection Rules
 
@@ -313,12 +323,89 @@ class TestExampleTool:
 - Add docstrings to all public functions
 - Include usage examples for new tools
 - Update type hints
+- **Update CHANGELOG.md** for all user-facing changes (see [Changelog Guidelines](#-changelog-guidelines))
 
 ### Documentation Style
 - Use clear, concise language
 - Provide practical examples
 - Include parameter descriptions
 - Document error conditions
+
+## 📝 Changelog Guidelines
+
+### Overview
+We maintain a detailed changelog following the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. All user-facing changes must be documented in `CHANGELOG.md`.
+
+### When to Update CHANGELOG.md
+**Always update** for:
+- ✅ New features or tools
+- ✅ Bug fixes
+- ✅ Breaking changes
+- ✅ Performance improvements
+- ✅ Security fixes
+- ✅ Dependency updates (major versions)
+
+**Don't update** for:
+- ❌ Internal refactoring (no user impact)
+- ❌ Test improvements
+- ❌ Documentation typos
+- ❌ CI/CD changes
+- ❌ Development tooling changes
+
+### How to Update CHANGELOG.md
+
+#### 1. Add Entry to [Unreleased] Section
+```markdown
+## [Unreleased]
+
+### Added
+- New knapsack solver with multi-dimensional support
+
+### Changed
+- Improved error messages for invalid optimization problems
+
+### Fixed
+- Fixed memory leak in large-scale linear programming problems
+
+### Security
+- Updated dependencies to address CVE-2024-XXXX
+```
+
+#### 2. Use Proper Categories
+- **Added**: New features, tools, or capabilities
+- **Changed**: Changes to existing functionality
+- **Deprecated**: Features marked for removal
+- **Removed**: Removed features
+- **Fixed**: Bug fixes
+- **Security**: Security-related changes
+
+#### 3. Write User-Focused Descriptions
+```markdown
+# ✅ Good
+- Added support for multi-objective optimization problems
+- Fixed timeout issues with large transportation problems
+
+# ❌ Bad  
+- Refactored solver factory pattern
+- Updated unit tests for better coverage
+```
+
+#### 4. Include Breaking Changes
+```markdown
+### Changed
+- **BREAKING**: Renamed `solve_problem()` to `optimize()` for consistency
+- **BREAKING**: Removed deprecated `legacy_solver` parameter
+```
+
+### Automatic Processing
+- During release, entries from `[Unreleased]` are automatically moved to versioned sections
+- Release dates are automatically added by `scripts/release.py`
+- No manual intervention needed for release finalization
+
+### Validation
+- PR template includes CHANGELOG.md checklist
+- Code owners (@dmitryanchikov) review all changelog changes
+- CI validates changelog format during builds
 
 ## 🔧 Adding New Optimization Tools
 
@@ -377,6 +464,7 @@ def solve_new_problem(
 - **`feature/*`**: Tests and security scans only
 - **`release/*`**: Full CI/CD pipeline, release candidate builds
 - **`hotfix/*`**: Full CI/CD pipeline, hotfix builds
+- **`merge/*`**: Tests and security scans (for merge-back validation)
 
 ## 🏷️ Tagging Strategy
 

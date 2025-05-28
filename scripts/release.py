@@ -25,7 +25,12 @@ def get_current_version() -> str:
     """Get current version from pyproject.toml."""
     pyproject_path = Path("pyproject.toml")
     content = pyproject_path.read_text()
-    match = re.search(r'version = "([^"]+)"', content)
+    # Extract version from [project] section only
+    project_section = re.search(r'\[project\](.*?)(?=\n\[|\Z)', content, re.DOTALL)
+    if not project_section:
+        raise ValueError("Could not find [project] section in pyproject.toml")
+    
+    match = re.search(r'version = "([^"]+)"', project_section.group(1))
     if not match:
         raise ValueError("Could not find version in pyproject.toml")
     return match.group(1)
@@ -50,7 +55,10 @@ def update_version(new_version: str) -> None:
 
 
 def update_changelog(version: str) -> None:
-    """Update CHANGELOG.md with release date."""
+    """Update CHANGELOG.md with release date.
+    
+    For details on changelog format, see Changelog Guidelines in CONTRIBUTING.md
+    """
     changelog_path = Path("CHANGELOG.md")
     if not changelog_path.exists():
         print("⚠️ CHANGELOG.md not found, skipping changelog update")
@@ -203,14 +211,17 @@ def main():
     """Main release script with Git Flow support."""
     parser = argparse.ArgumentParser(description="Prepare MCP Optimizer release with Git Flow")
     parser.add_argument("version", nargs="?", help="New version number (e.g., 0.2.0)")
-    parser.add_argument("--type", choices=["major", "minor", "patch"], 
-                       help="Release type (auto-calculates version)")
-    parser.add_argument("--hotfix", action="store_true", 
-                       help="Create hotfix branch from main")
-    parser.add_argument("--skip-tests", action="store_true", help="Skip running tests")
+    parser.add_argument(
+        "--type", choices=["major", "minor", "patch"], help="Release type (auto-calculates version)"
+    )
+    parser.add_argument("--hotfix", action="store_true", help="Create hotfix branch from main")
     parser.add_argument("--dry-run", action="store_true", help="Show what would be done")
 
     args = parser.parse_args()
+
+    # Check git status
+    if not check_git_status():
+        sys.exit(1)
 
     # Determine version
     current_version = get_current_version()
@@ -265,10 +276,6 @@ def main():
             print("8. Create PR to main for final release")
         return
 
-    # Check git status
-    if not check_git_status():
-        sys.exit(1)
-
     # Branch creation logic
     if args.hotfix:
         print("🚨 Creating HOTFIX release")
@@ -284,12 +291,9 @@ def main():
     update_changelog(new_version)
 
     # Run tests
-    if not args.skip_tests:
-        if not run_tests():
-            print("❌ Tests failed, aborting release")
-            sys.exit(1)
-    else:
-        print("⚠️ Skipping tests")
+    if not run_tests():
+        print("❌ Tests failed, aborting release")
+        sys.exit(1)
 
     # Commit changes
     commit_release_changes(new_version)
