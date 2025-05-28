@@ -549,7 +549,7 @@ python scripts/test_release_detection.py --simulate
 - ✅ **Regression Testing**: Ensures changes don't break detection
 
 **When to Use:**
-- Before modifying detection logic in `.github/workflows/auto-finalize-release.yml`
+- Before modifying detection logic in `.github/workflows/ci.yml` (release job)
 - After updating release scripts or workflows
 - When troubleshooting release detection issues
 - For validating branch protection rule changes

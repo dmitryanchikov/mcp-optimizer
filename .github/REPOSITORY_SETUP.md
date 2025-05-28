@@ -300,7 +300,8 @@ chmod +x setup-repository.sh
 #### Release Detection Not Working
 - Check that branch names follow exact pattern `release/vX.Y.Z` or `hotfix/vX.Y.Z`
 - Verify merge commit messages contain the expected pattern
-- Ensure the auto-finalize-release workflow is enabled
+- Ensure the unified CI/CD pipeline in `.github/workflows/ci.yml` is enabled
+- Check release detection logic in the `release` job
 
 #### Admins Can Bypass Rules
 - Ensure "Do not allow bypassing the above settings" is enabled for critical branches
