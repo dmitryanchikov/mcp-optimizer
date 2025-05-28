@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enables CI checks for merge-back branches before creating PRs to develop
   - Ensures merge-back branches pass all required status checks
   - Improves reliability of automated release-to-develop merge process
+  - Updated `CONTRIBUTING.md` and `RELEASE_PROCESS.md` to document merge/* branch workflow
 
 ## [0.3.6] - 2025-05-28
 
