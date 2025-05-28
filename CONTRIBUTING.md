@@ -72,6 +72,16 @@ Thank you for your interest in contributing to MCP Optimizer! This document prov
   - `hotfix/v1.1.1`
   - `hotfix/critical-security-fix`
 
+**`merge/*`**
+- **Purpose**: Automated merge-back from main to develop after releases
+- **Naming**: `merge/release-v{major}.{minor}.{patch}-to-develop`
+- **Branches from**: `main` (automated)
+- **Merges to**: `develop` via Pull Request
+- **Lifetime**: Temporary, deleted after merge
+- **Examples**: 
+  - `merge/release-v1.2.0-to-develop`
+  - `merge/hotfix-v1.1.1-to-develop`
+
 ### Branch Protection Rules
 
 #### `main` Branch Protection
@@ -454,6 +464,7 @@ def solve_new_problem(
 - **`feature/*`**: Tests and security scans only
 - **`release/*`**: Full CI/CD pipeline, release candidate builds
 - **`hotfix/*`**: Full CI/CD pipeline, hotfix builds
+- **`merge/*`**: Tests and security scans (for merge-back validation)
 
 ## 🏷️ Tagging Strategy
 

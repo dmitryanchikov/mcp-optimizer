@@ -301,11 +301,12 @@ All detected releases must pass validation:
 - **Conservative Approach**: Better to miss a release than create a false one
 
 ##### Testing & Validation
-The detection system includes comprehensive testing via `scripts/test_release_detection.py`:
-- Tests all detection patterns and edge cases
-- Validates version format requirements
-- Simulates complete detection logic
-- Ensures reliability across different scenarios
+The detection system is thoroughly tested in production through:
+- **Real-world CI/CD execution**: Every merge to main tests the detection logic
+- **Multiple fallback methods**: Ensures reliability across different scenarios  
+- **Comprehensive logging**: GitHub Actions logs show detection results and reasoning
+- **Validation layers**: Multiple checks prevent false positives
+- **Manual override**: `scripts/finalize_release.py` available as backup
 
 #### Fallback: Manual Finalization
 ```bash
@@ -526,35 +527,6 @@ uv run python scripts/finalize_release.py --skip-cleanup
 uv run python scripts/finalize_release.py --dry-run
 ```
 
-#### `scripts/test_release_detection.py` - Test Detection System
-Comprehensive test suite for validating the hybrid release detection logic.
-
-**Usage Examples:**
-```bash
-# Run all detection tests
-uv run python scripts/test_release_detection.py
-
-# Test specific patterns
-python scripts/test_release_detection.py --pattern release_branch
-
-# Validate detection logic
-python scripts/test_release_detection.py --simulate
-```
-
-**Test Coverage:**
-- ✅ **Branch Merge Patterns**: Tests release/* and hotfix/* branch merge detection
-- ✅ **Version Validation**: Validates semantic versioning requirements
-- ✅ **Edge Cases**: Tests invalid formats and non-release scenarios
-- ✅ **Security Validation**: Ensures only authorized merges trigger releases
-- ✅ **Regression Testing**: Ensures changes don't break detection
-
-**When to Use:**
-- Before modifying detection logic in `.github/workflows/auto-finalize-release.yml`
-- After updating release scripts or workflows
-- When troubleshooting release detection issues
-- For validating branch protection rule changes
-- During security audits of the release process
-
 ### Script Features
 - **Version Management**: Auto-increment or manual version specification
 - **Branch Validation**: Ensures correct source branch (develop/main)
@@ -594,6 +566,7 @@ The project uses a **single unified CI/CD pipeline** (`.github/workflows/ci.yml`
 | `hotfix/*` | test + security + build |
 | `develop` | test + security + build |
 | `feature/*` | test + security + build |
+| `merge/*` | test + security + build |
 
 #### Key Features
 
@@ -622,7 +595,7 @@ The project uses a **single unified CI/CD pipeline** (`.github/workflows/ci.yml`
 ```yaml
 on:
   push:
-    branches: [ main, develop, 'feature/*', 'release/*', 'hotfix/*' ]
+    branches: [ main, develop, 'feature/*', 'release/*', 'hotfix/*', 'merge/*' ]
   workflow_dispatch:
     inputs:
       force_release:
