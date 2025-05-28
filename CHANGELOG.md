@@ -131,6 +131,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Improved resource efficiency and eliminated redundant executions
   - Centralized logging and monitoring for better debugging
   - Consistent behavior across all branch types
+- **CI/CD Optimization**: Optimized Docker image build and push strategy
+  - Build job now only pushes images for main, develop, release/*, and hotfix/* branches
+  - Feature and merge branches only build images for validation (no push to registry)
+  - Eliminates unnecessary Docker images for temporary branches
+  - Reduces CI/CD time and registry storage usage
+  - Prevents registry pollution with temporary development images
 
 ## [0.3.1] - 2025-05-27
 
