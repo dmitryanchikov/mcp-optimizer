@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **License**: Added MIT License file to the repository
+  - Created LICENSE file with proper MIT license text and copyright notice
+  - Enables proper open source licensing and distribution
+
 ### Fixed
 - **CI/CD Pipeline**: Critical fixes for Docker image duplication and workflow execution
   - Fixed double Docker image pushes during releases (docker-push-auto + docker-push-release)
@@ -18,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated merge-back PR titles and descriptions to correctly reflect hotfix vs release
   - Fixed branch naming in merge-back process to handle different release types
   - Enhanced commit messages and labels to use appropriate release type terminology
+- **Code Quality**: Replaced Russian comments with English in release scripts
+  - Updated `scripts/finalize_release.py` to use English comments throughout
+  - Improved code maintainability and international collaboration support
 
 ### Changed
 - **CI/CD Architecture**: Separated build and Docker push responsibilities for better control
@@ -31,6 +39,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - feature/* → feature-{name} tag (manual only via workflow_dispatch)
   - merge/* → merge-{name} tag (manual only via workflow_dispatch)
   - releases → versioned tags (v1.2.3, 1.2, 1, latest) via docker-push-release
+- **Documentation**: Streamlined Docker documentation and removed non-working solutions
+  - Removed `docker/` directory containing non-functional distroless Docker image
+  - Updated main README.md to reflect only working Docker optimization approaches
+  - Removed `docker_size_analysis.md` file, migrated relevant content to main README
+  - Clarified that distroless approach is incompatible with OR-Tools requirements
+
+### Removed
+- **Non-functional Docker builds**: Removed distroless Docker configuration
+  - Deleted `docker/Dockerfile.distroless` that was incompatible with OR-Tools
+  - Removed `docker/README.md` containing documentation for non-working solutions
+  - Cleaned up references to non-functional distroless builds in documentation
+- **Redundant documentation**: Removed `docker_size_analysis.md`
+  - Migrated Docker image size analysis to main README.md
+  - Eliminated duplicate documentation and improved information organization
 
 ### Added
 - **Manual Docker Push**: New workflow_dispatch option for pushing Docker images from any branch
