@@ -136,7 +136,7 @@ This PR merges changes from release v{version} back to the develop branch to ens
             print("\n📚 Detailed resolution guide:")
             print("https://github.com/dmitryanchikov/mcp-optimizer/blob/main/.github/RELEASE_PROCESS.md#-merge-conflict-resolution")
             
-            # Создаем issue для отслеживания
+            # Create issue for tracking
             print(f"\n📝 Creating GitHub issue to track merge conflict...")
             issue_body = f"""
 ## Merge Conflict During Release v{version}
@@ -165,7 +165,7 @@ See: https://github.com/dmitryanchikov/mcp-optimizer/blob/main/.github/RELEASE_P
 **Note**: Direct pushes to develop are prohibited. All changes must go through PR.
             """
             
-            # Создание issue через GitHub CLI
+            # Create issue via GitHub CLI
             run_command([
                 "gh", "issue", "create", 
                 "--title", f"Merge conflict: release v{version} main→develop (PR required)",
