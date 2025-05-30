@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **CI/CD Pipeline**: Critical fixes for Docker image duplication and workflow execution
+  - Fixed double Docker image pushes during releases (docker-push-auto + docker-push-release)
+  - Fixed pipeline not executing on merge/* branches due to incorrect job conditions
+  - Fixed incorrect PR titles for hotfixes showing "release" instead of "hotfix"
+  - Corrected test and security job conditions to properly handle push events vs workflow_dispatch
+- **Merge-back Automation**: Enhanced release type detection and naming
+  - Added release_type output to release job for proper hotfix/release/emergency distinction
+  - Updated merge-back PR titles and descriptions to correctly reflect hotfix vs release
+  - Fixed branch naming in merge-back process to handle different release types
+  - Enhanced commit messages and labels to use appropriate release type terminology
+
+### Changed
+- **CI/CD Architecture**: Separated build and Docker push responsibilities for better control
+  - Split Docker operations into separate jobs: docker-push-auto, docker-push-manual, docker-push-release
+  - Added push_docker option to workflow_dispatch for manual Docker pushes from non-main/develop branches
+  - Implemented anti-duplication logic: docker-push-auto skips main branch when release is detected
+  - Enhanced workflow summary with detailed status reporting for all Docker operations
+- **Docker Registry Strategy**: Improved tagging and push logic
+  - main branch → main tag (only for non-release pushes)
+  - develop branch → develop tag (always)
+  - feature/* → feature-{name} tag (manual only via workflow_dispatch)
+  - merge/* → merge-{name} tag (manual only via workflow_dispatch)
+  - releases → versioned tags (v1.2.3, 1.2, 1, latest) via docker-push-release
+
+### Added
+- **Manual Docker Push**: New workflow_dispatch option for pushing Docker images from any branch
+  - Enables testing and debugging of Docker images from feature/merge branches
+  - Controlled via push_docker boolean input in GitHub Actions UI
+  - Separate docker-push-manual job handles these requests
+- **Enhanced Workflow Documentation**: Comprehensive inline documentation
+  - Detailed job structure and strategy comments in CI/CD pipeline
+  - Anti-duplication logic documentation
+  - Branch-specific behavior explanations
+
 ## [0.3.8] - 2025-05-28
 
 ### Fixed
