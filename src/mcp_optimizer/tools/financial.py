@@ -13,6 +13,8 @@ import pulp
 from fastmcp import FastMCP
 from pydantic import BaseModel, Field, validator
 
+from mcp_optimizer.utils.resource_monitor import with_resource_limits
+
 from ..schemas.base import OptimizationResult, OptimizationStatus
 
 
@@ -81,6 +83,7 @@ class PortfolioInput(BaseModel):
         return v
 
 
+@with_resource_limits(timeout_seconds=90.0, estimated_memory_mb=150.0)
 def solve_portfolio_optimization(input_data: dict[str, Any]) -> OptimizationResult:
     """Solve Portfolio Optimization Problem using PuLP.
 
@@ -303,6 +306,7 @@ def solve_portfolio_optimization(input_data: dict[str, Any]) -> OptimizationResu
         )
 
 
+@with_resource_limits(timeout_seconds=60.0, estimated_memory_mb=100.0)
 def solve_risk_parity_portfolio(input_data: dict[str, Any]) -> OptimizationResult:
     """Solve Risk Parity Portfolio Optimization.
 
@@ -447,14 +451,8 @@ def optimize_portfolio(
         }
 
         result = solve_portfolio_optimization(input_data)
-        return {
-            "status": result.status,
-            "objective_value": result.objective_value,
-            "variables": result.variables,
-            "execution_time": result.execution_time,
-            "solver_info": result.solver_info,
-            "error_message": result.error_message,
-        }
+        result_dict: dict[str, Any] = result.model_dump()
+        return result_dict
 
     except Exception as e:
         return {

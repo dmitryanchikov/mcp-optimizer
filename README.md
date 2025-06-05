@@ -85,7 +85,7 @@ Then add to your Claude Desktop config:
 }
 ```
 
-*Method B: Docker with SSE transport (for HTTP/web clients)*
+*Method B: Docker with SSE transport (for remote MCP clients)*
 ```bash
 # Run SSE server on port 8000
 docker run -d -p 8000:8000 ghcr.io/dmitryanchikov/mcp-optimizer:latest \
@@ -95,7 +95,7 @@ docker run -d -p 8000:8000 ghcr.io/dmitryanchikov/mcp-optimizer:latest \
 docker run -d -p 9000:9000 ghcr.io/dmitryanchikov/mcp-optimizer:latest \
   python -m mcp_optimizer.main --transport sse --host 0.0.0.0 --port 9000
 ```
-Then use HTTP client to connect to `http://localhost:8000` (requires additional MCP HTTP client setup)
+Then use MCP SSE client to connect to `http://localhost:8000` (requires MCP SSE client setup)
 
 #### Cursor Integration
 
@@ -183,9 +183,9 @@ python main.py
 
 #### Transport Modes
 
-MCP Optimizer supports two transport protocols:
+MCP Optimizer supports two MCP transport protocols:
 - **STDIO**: Standard input/output for direct MCP client integration (Claude Desktop, Cursor, etc.)
-- **SSE**: Server-Sent Events over HTTP for web-based clients and custom integrations
+- **SSE**: Server-Sent Events over HTTP for web-based MCP clients and remote integrations
 
 **STDIO Transport (Default - for MCP clients like Claude Desktop)**
 ```bash
@@ -199,9 +199,9 @@ uv run python -m mcp_optimizer.main --transport stdio
 python main.py
 ```
 
-**SSE Transport (for HTTP/web clients)**
+**SSE Transport (for remote MCP clients)**
 ```bash
-# SSE mode for HTTP clients (default port 8000)
+# SSE mode for remote MCP clients (default port 8000)
 uvx mcp-optimizer --transport sse
 # or
 uv run python -m mcp_optimizer.main --transport sse
