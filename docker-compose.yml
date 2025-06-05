@@ -5,14 +5,18 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: production
     container_name: mcp-optimizer
     restart: unless-stopped
     environment:
-      - MCP_OPTIMIZER_LOG_LEVEL=DEBUG
-      - MCP_OPTIMIZER_MAX_SOLVE_TIME=300
-      - MCP_OPTIMIZER_MAX_MEMORY_MB=2048
-      - MCP_OPTIMIZER_MAX_CONCURRENT_REQUESTS=5
+      - LOG_LEVEL=DEBUG
+      - MAX_SOLVE_TIME=300
+      - MAX_MEMORY_MB=2048
+      - MAX_CONCURRENT_REQUESTS=5
+      - DEBUG=true
+      # MCP SSE server configuration for remote access
+      - TRANSPORT_MODE=mcp_sse
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8000
     volumes:
       # Mount source code for development (comment out for production)
       - ./src:/app/src:ro

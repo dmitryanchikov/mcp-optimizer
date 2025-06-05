@@ -5,6 +5,7 @@ This module provides tools for solving routing problems including:
 - Vehicle Routing Problem (VRP)
 """
 
+import logging
 import math
 import time
 from typing import Any
@@ -13,7 +14,11 @@ from fastmcp import FastMCP
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
 from pydantic import BaseModel, Field, validator
 
+from mcp_optimizer.utils.resource_monitor import with_resource_limits
+
 from ..schemas.base import OptimizationResult, OptimizationStatus
+
+logger = logging.getLogger(__name__)
 
 
 class Location(BaseModel):
@@ -139,6 +144,7 @@ def haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> fl
     return R * c
 
 
+@with_resource_limits(timeout_seconds=120.0, estimated_memory_mb=150.0)
 def solve_traveling_salesman(input_data: dict[str, Any]) -> OptimizationResult:
     """Solve Traveling Salesman Problem using OR-Tools.
 
@@ -280,6 +286,7 @@ def solve_traveling_salesman(input_data: dict[str, Any]) -> OptimizationResult:
         )
 
 
+@with_resource_limits(timeout_seconds=180.0, estimated_memory_mb=150.0)
 def solve_vehicle_routing(input_data: dict[str, Any]) -> OptimizationResult:
     """Solve Vehicle Routing Problem using OR-Tools.
 
@@ -504,7 +511,8 @@ def register_routing_tools(mcp: FastMCP[Any]) -> None:
         }
 
         result = solve_traveling_salesman(input_data)
-        return result.model_dump()
+        result_dict: dict[str, Any] = result.model_dump()
+        return result_dict
 
     @mcp.tool()
     def solve_vehicle_routing_problem(
@@ -538,4 +546,5 @@ def register_routing_tools(mcp: FastMCP[Any]) -> None:
         }
 
         result = solve_vehicle_routing(input_data)
-        return result.model_dump()
+        result_dict: dict[str, Any] = result.model_dump()
+        return result_dict

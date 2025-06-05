@@ -29,7 +29,7 @@ def get_current_version() -> str:
     project_section = re.search(r'\[project\](.*?)(?=\n\[|\Z)', content, re.DOTALL)
     if not project_section:
         raise ValueError("Could not find [project] section in pyproject.toml")
-    
+
     match = re.search(r'version = "([^"]+)"', project_section.group(1))
     if not match:
         raise ValueError("Could not find version in pyproject.toml")
@@ -40,7 +40,7 @@ def update_version(new_version: str) -> None:
     """Update version in pyproject.toml."""
     pyproject_path = Path("pyproject.toml")
     content = pyproject_path.read_text()
-    
+
     # Only update the project version in the [project] section
     # Use a more specific regex to avoid updating other version fields
     updated_content = re.sub(
@@ -49,7 +49,7 @@ def update_version(new_version: str) -> None:
         content,
         flags=re.DOTALL
     )
-    
+
     pyproject_path.write_text(updated_content)
     print(f"Updated version to {new_version} in pyproject.toml")
 
@@ -63,7 +63,7 @@ def update_changelog(version: str) -> None:
     if not changelog_path.exists():
         print("⚠️ CHANGELOG.md not found, skipping changelog update")
         return
-        
+
     content = changelog_path.read_text()
 
     # Replace [Unreleased] with version and date
@@ -142,15 +142,15 @@ def ensure_on_develop() -> bool:
 def create_release_branch(version: str) -> str:
     """Create release branch from develop."""
     branch_name = f"release/v{version}"
-    
+
     # Ensure develop is up to date
     print("Updating develop branch...")
     run_command(["git", "pull", "origin", "develop"])
-    
+
     # Create release branch
     print(f"Creating release branch: {branch_name}")
     run_command(["git", "checkout", "-b", branch_name])
-    
+
     return branch_name
 
 
@@ -172,16 +172,16 @@ def push_release_branch(branch_name: str) -> None:
 def create_hotfix_branch(version: str) -> str:
     """Create hotfix branch from main."""
     branch_name = f"hotfix/v{version}"
-    
+
     # Switch to main and update
     print("Switching to main branch...")
     run_command(["git", "checkout", "main"])
     run_command(["git", "pull", "origin", "main"])
-    
+
     # Create hotfix branch
     print(f"Creating hotfix branch: {branch_name}")
     run_command(["git", "checkout", "-b", branch_name])
-    
+
     return branch_name
 
 
@@ -189,7 +189,7 @@ def validate_version_increment(current: str, new: str, release_type: str) -> boo
     """Validate that version increment is correct."""
     current_parts = [int(x) for x in current.split('.')]
     new_parts = [int(x) for x in new.split('.')]
-    
+
     if release_type == "major":
         expected = [current_parts[0] + 1, 0, 0]
     elif release_type == "minor":
@@ -198,12 +198,12 @@ def validate_version_increment(current: str, new: str, release_type: str) -> boo
         expected = [current_parts[0], current_parts[1], current_parts[2] + 1]
     else:
         return True  # Allow any version for manual specification
-    
+
     if new_parts != expected:
         print(f"❌ Version increment incorrect for {release_type} release")
         print(f"Expected: {'.'.join(map(str, expected))}, got: {new}")
         return False
-    
+
     return True
 
 
@@ -225,7 +225,7 @@ def main():
 
     # Determine version
     current_version = get_current_version()
-    
+
     if args.type:
         # Auto-calculate version based on type
         parts = [int(x) for x in current_version.split('.')]
@@ -247,7 +247,7 @@ def main():
 
     print(f"Current version: {current_version}")
     print(f"New version: {new_version}")
-    
+
     # Validate version increment
     if args.type and not validate_version_increment(current_version, new_version, args.type):
         sys.exit(1)
@@ -303,7 +303,7 @@ def main():
 
     print(f"🎉 Release {new_version} branch created successfully!")
     print(f"\nBranch: {branch_name}")
-    
+
     if args.hotfix:
         print("\nNext steps for HOTFIX:")
         print("1. CI/CD will run tests and build")
@@ -317,8 +317,8 @@ def main():
         print("3. Create PR to main when ready")
         print("4. After merge to main, tag will trigger production release")
         print("5. Merge main back to develop")
-    
-    print(f"\nRelease candidate will be available as:")
+
+    print("\nRelease candidate will be available as:")
     print(f"- Docker: ghcr.io/dmitryanchikov/mcp-optimizer:{new_version}-rc")
     print(f"- GitHub Release: v{new_version}-rc.X")
 
