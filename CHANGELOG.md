@@ -44,6 +44,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated main README.md to reflect only working Docker optimization approaches
   - Removed `docker_size_analysis.md` file, migrated relevant content to main README
   - Clarified that distroless approach is incompatible with OR-Tools requirements
+- **Dependencies Architecture**: Refactored project dependencies for cleaner separation
+  - Moved `pandas>=2.0.0` and `numpy>=1.24.0` from core dependencies to optional `[examples]` extra
+  - Core package now includes only essential dependencies: `fastmcp`, `ortools`, `pulp`, `pydantic`, `uvicorn`
+  - Updated installation instructions: use `pip install "mcp-optimizer[examples]"` for running integration examples
+  - **Note**: pandas and numpy still present in Docker images due to OR-Tools hard requirements
+- **Documentation**: Updated README and examples documentation
+  - Added installation instructions for examples dependencies in README.md
+  - Updated examples/integration/README.md with correct dependency installation commands
+  - Enhanced streamlit_dashboard.py with comprehensive installation notes
+  - Updated Docker image size analysis with correct dependency constraints explanation
+- **Docker Image Analysis**: Clarified dependency constraints in optimization documentation
+  - Documented that OR-Tools requires pandas and numpy as mandatory dependencies (`pandas>=2.0.0`, `numpy>=1.13.3`)
+  - Updated image size analysis to reflect actual constraints preventing further optimization
+  - Current optimized size: ~420MB (cannot be reduced further due to OR-Tools requirements)
 
 ### Removed
 - **Non-functional Docker builds**: Removed distroless Docker configuration

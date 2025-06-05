@@ -5,10 +5,18 @@ MCP Optimizer - Streamlit Dashboard
 Interactive web dashboard for MCP Optimizer with real-time optimization capabilities.
 
 Installation:
-    pip install mcp-optimizer streamlit plotly pandas
+    # Install mcp-optimizer with examples dependencies
+    pip install "mcp-optimizer[examples]"
+    
+    # Or install dependencies manually
+    pip install mcp-optimizer streamlit plotly pandas numpy
 
 Usage:
     streamlit run streamlit_dashboard.py
+
+Note: This example requires additional dependencies (streamlit, plotly, pandas, numpy)
+      that are not included in the core mcp-optimizer package. Install them using
+      the [examples] extra or manually.
 """
 
 import json
