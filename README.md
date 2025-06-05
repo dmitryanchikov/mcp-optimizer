@@ -9,6 +9,25 @@
 
 ## 🚀 Quick Start
 
+### 🚀 Method 1: uvx (Recommended - No Installation Required!)
+```bash
+# Works instantly without any setup!
+uvx mcp-optimizer
+
+# That's it! The server is now running and ready for MCP clients.
+```
+
+### 📦 Method 2: pip install
+```bash
+pip install mcp-optimizer
+
+# For running integration examples (requires additional dependencies)
+pip install "mcp-optimizer[examples]"
+
+# Run the server
+mcp-optimizer
+```
+
 ### Integration with LLM Clients
 
 #### Claude Desktop Integration
@@ -685,13 +704,20 @@ The MCP Optimizer Docker image has been optimized to balance functionality and s
 | **Application code (/code)** | **0.2 MB** | **0.04%** | MCP Optimizer source code |
 
 ### Key Dependencies by Size
-- **OR-Tools**: 74.2 MB (31.3% of Python packages) - Critical optimization solver
-- **pandas**: 56.3 MB (23.8% of Python packages) - Data manipulation
-- **PuLP**: 34.9 MB (14.7% of Python packages) - Linear programming solver
-- **NumPy**: 46.0 MB (19.4% of Python packages) - Numerical computing
+- **OR-Tools**: 75.0 MB (27.8% of venv) - Critical optimization solver (requires pandas + numpy)
+- **pandas**: 45.0 MB (16.7% of venv) - Required by OR-Tools for data operations
+- **NumPy**: 24.0 MB (8.9% of venv) - Required by OR-Tools for numerical computing
+- **PuLP**: 34.9 MB (12.9% of venv) - Linear programming solver  
+- **FastMCP**: 15.2 MB (5.6% of venv) - MCP server framework
+- **Pydantic**: 12.8 MB (4.7% of venv) - Data validation
+
+### Dependencies Analysis
+- **Core packages cannot be reduced further**: OR-Tools (our main optimization engine) requires both pandas and numpy as mandatory dependencies
+- **Optional examples moved**: Additional packages for examples (streamlit, plotly) moved to `[examples]` extra
+- **Minimal core impact**: Moving examples to optional dependencies only affects development/demo usage
 
 ### Image Optimization
-- **Current optimized size**: ~398MB (61% reduction from original 1.03GB)
-- **Further optimization potential**: ~50-70MB by reviewing pandas dependency
-
-The main Dockerfile uses multi-stage builds, aggressive cleanup, and optimized Python settings to achieve 61% size reduction.
+- **Current optimized size**: ~420MB
+- **Core functionality**: Includes all necessary dependencies for production optimization
+- **Example support**: Install with `[examples]` extra for additional demo functionality
+- **OR-Tools constraint**: Cannot remove pandas/numpy due to hard dependency requirements

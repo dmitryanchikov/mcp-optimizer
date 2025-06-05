@@ -5,7 +5,14 @@ This directory contains comprehensive integration examples for the `mcp-optimize
 ## Installation
 
 ```bash
+# Install the main package
 pip install mcp-optimizer
+
+# For running examples that require additional dependencies (streamlit, plotly, etc.)
+pip install "mcp-optimizer[examples]"
+
+# Or install additional dependencies manually
+pip install streamlit plotly pandas numpy
 ```
 
 ## Available Integration Examples
