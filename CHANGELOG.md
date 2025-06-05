@@ -7,10 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- **Non-functional Docker builds**: Removed distroless Docker configuration
+  - Deleted `docker/Dockerfile.distroless` that was incompatible with OR-Tools
+  - Removed `docker/README.md` containing documentation for non-working solutions
+  - Cleaned up references to non-functional distroless builds in documentation
+- **Redundant documentation**: Removed `docker_size_analysis.md`
+  - Migrated Docker image size analysis to main README.md
+  - Eliminated duplicate documentation and improved information organization
+
 ### Added
 - **License**: Added MIT License file to the repository
   - Created LICENSE file with proper MIT license text and copyright notice
   - Enables proper open source licensing and distribution
+- **Manual Docker Push**: New workflow_dispatch option for pushing Docker images from any branch
+  - Enables testing and debugging of Docker images from feature/merge branches
+  - Controlled via push_docker boolean input in GitHub Actions UI
+  - Separate docker-push-manual job handles these requests
+- **Enhanced Workflow Documentation**: Comprehensive inline documentation
+  - Detailed job structure and strategy comments in CI/CD pipeline
+  - Anti-duplication logic documentation
+  - Branch-specific behavior explanations
+- **Resource Monitoring System**: Comprehensive resource monitoring and concurrency control
+  - Added `ResourceMonitor` class with memory monitoring via `psutil`
+  - Implemented asyncio semaphore-based concurrency control for optimization requests
+  - Created `@with_resource_limits` decorator for timeout and memory estimation
+  - Added custom exceptions: `MemoryExceededError`, `ConcurrencyLimitError`
+  - Health check endpoints with detailed resource metrics and status reporting
+
+- **MCP Server Enhancements**: Production-ready server configuration
+  - Integrated resource monitoring into MCP server with health endpoints
+  - Added server info and resource statistics endpoints for monitoring
+  - Graceful shutdown with proper resource cleanup
+  - Real-time resource status tracking with configurable limits
+
+- **MCP Transport Support**: Flexible MCP server deployment modes
+  - Added SSE transport mode for remote MCP clients with uvicorn
+  - Maintained stdio transport for local MCP client compatibility
+  - Environment-based transport mode selection via `TRANSPORT_MODE`
+  - Explicit uvicorn configuration with single worker architecture
+
+- **Tool Resource Management**: Individual resource limits for optimization tools
+  - Applied `@with_resource_limits` decorator to all 15 optimization tools
+  - Configured individual timeouts and memory estimates per tool type:
+    - Linear/Integer Programming: 60-90s, 100-150MB
+    - Routing (TSP/VRP): 120-180s, 150-250MB
+    - Scheduling: 90-120s, 120-200MB
+    - Knapsack/Assignment: 60s, 80-100MB
+    - Financial/Production: 90-120s, 150-200MB
 
 ### Fixed
 - **CI/CD Pipeline**: Critical fixes for Docker image duplication and workflow execution
@@ -26,6 +70,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Code Quality**: Replaced Russian comments with English in release scripts
   - Updated `scripts/finalize_release.py` to use English comments throughout
   - Improved code maintainability and international collaboration support
+- **Environment Configuration**: Corrected environment variable naming
+  - Fixed environment variables by removing incorrect `MCP_OPTIMIZER_` prefix
+  - Updated variable names to match application expectations: `LOG_LEVEL`, `MAX_SOLVE_TIME`, etc.
+  - Synchronized configuration across Docker, Kubernetes, and local development
+
+- **Kubernetes Configuration**: Removed hardcoded version labels from deployment manifests
+  - Removed obsolete `app.kubernetes.io/version: "0.1.0"` labels from k8s/deployment.yaml
+  - Prevents version drift and maintenance overhead in Kubernetes manifests
+  - Version information available through Docker image tags instead
+
+- **Type Safety**: Comprehensive mypy error resolution
+  - Fixed all mypy type checking errors across 23 source files
+  - Corrected return type annotations in tool functions
+  - Added explicit type annotations to suppress no-any-return warnings
+  - Fixed decorator ordering for proper type inference
+
+- **Docker Configuration**: Corrected Docker Compose and Dockerfile settings
+  - Removed invalid `target: production` from docker-compose.yml
+  - Updated Dockerfile environment variables to match application expectations
+  - Fixed health check configuration for proper server validation
 
 ### Changed
 - **CI/CD Architecture**: Separated build and Docker push responsibilities for better control
@@ -58,25 +122,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Documented that OR-Tools requires pandas and numpy as mandatory dependencies (`pandas>=2.0.0`, `numpy>=1.13.3`)
   - Updated image size analysis to reflect actual constraints preventing further optimization
   - Current optimized size: ~420MB (cannot be reduced further due to OR-Tools requirements)
+- **Architecture**: Single worker + asyncio semaphore design
+  - Explicitly configured `WORKERS=1` for optimal CPU-intensive math operations
+  - Implemented asyncio-based concurrency instead of multiple uvicorn workers
+  - Leveraged GIL release in PuLP/OR-Tools for true parallelism within single process
+  - Optimized memory usage through shared libraries and process pools
 
-### Removed
-- **Non-functional Docker builds**: Removed distroless Docker configuration
-  - Deleted `docker/Dockerfile.distroless` that was incompatible with OR-Tools
-  - Removed `docker/README.md` containing documentation for non-working solutions
-  - Cleaned up references to non-functional distroless builds in documentation
-- **Redundant documentation**: Removed `docker_size_analysis.md`
-  - Migrated Docker image size analysis to main README.md
-  - Eliminated duplicate documentation and improved information organization
+- **Configuration Management**: Unified environment variable strategy
+  - Standardized configuration across Docker Compose, Kubernetes, and local development
+  - Added comprehensive environment variable documentation in deployment configs
+  - Enhanced configuration validation and error reporting
 
-### Added
-- **Manual Docker Push**: New workflow_dispatch option for pushing Docker images from any branch
-  - Enables testing and debugging of Docker images from feature/merge branches
-  - Controlled via push_docker boolean input in GitHub Actions UI
-  - Separate docker-push-manual job handles these requests
-- **Enhanced Workflow Documentation**: Comprehensive inline documentation
-  - Detailed job structure and strategy comments in CI/CD pipeline
-  - Anti-duplication logic documentation
-  - Branch-specific behavior explanations
+- **Dependency Management**: Added psutil for resource monitoring
+  - Added `psutil>=5.9.0` to project dependencies for memory monitoring
+  - Implemented efficient resource monitoring with caching to minimize overhead
+  - Added lazy loading and background monitoring for long-running operations
+
+### Documentation
+- **Architecture Documentation**: Documented single worker design rationale
+  - Explained why 1 worker + asyncio is more efficient than N workers for math optimization
+  - Documented GIL release behavior in PuLP/OR-Tools for parallel execution
+  - Added performance comparison and resource utilization analysis
+
+- **Configuration Guide**: Comprehensive environment variable documentation
+  - Documented all configuration options with examples and defaults
+  - Added deployment-specific configuration recommendations
+  - Enhanced troubleshooting guides for resource monitoring issues
 
 ## [0.3.8] - 2025-05-28
 

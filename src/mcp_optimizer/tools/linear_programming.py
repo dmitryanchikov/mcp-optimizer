@@ -7,11 +7,13 @@ from fastmcp import FastMCP
 
 from mcp_optimizer.schemas.base import Constraint, Objective, Variable
 from mcp_optimizer.solvers.pulp_solver import PuLPSolver
+from mcp_optimizer.utils.resource_monitor import with_resource_limits
 
 logger = logging.getLogger(__name__)
 
 
 # Define functions that can be imported directly
+@with_resource_limits(timeout_seconds=60.0, estimated_memory_mb=100.0)
 def solve_linear_program(
     objective: dict[str, Any],
     variables: dict[str, dict[str, Any]],
@@ -23,13 +25,11 @@ def solve_linear_program(
     try:
         # Parse and validate input
         obj = Objective(**objective)
-        vars_dict = {name: Variable(**var_data) for name, var_data in variables.items()}
+        vars_dict = {name: Variable(**var_def) for name, var_def in variables.items()}
         constraints_list = [Constraint(**constraint) for constraint in constraints]
 
-        # Create solver
-        pulp_solver = PuLPSolver(solver_name=solver)
-
-        # Solve problem
+        # Create and solve problem
+        pulp_solver = PuLPSolver(solver)
         result = pulp_solver.solve_linear_program(
             objective=obj,
             variables=vars_dict,
@@ -37,23 +37,21 @@ def solve_linear_program(
             time_limit=time_limit_seconds,
         )
 
-        logger.info(
-            f"Linear program solved with status: {result.get('status') if isinstance(result, dict) else result}"
-        )
-        return result if isinstance(result, dict) else {"error": "Invalid result type"}
+        return result
 
     except Exception as e:
-        logger.error(f"Error in solve_linear_program: {e}")
+        logger.error(f"Linear programming error: {e}")
         return {
             "status": "error",
-            "objective_value": None,
-            "execution_time": 0.0,
             "error_message": f"Failed to solve linear program: {str(e)}",
+            "objective_value": None,
             "variables": {},
-            "solver_info": {"solver_name": solver},
+            "execution_time": 0.0,
+            "solver_info": {},
         }
 
 
+@with_resource_limits(timeout_seconds=60.0, estimated_memory_mb=100.0)
 def solve_integer_program(
     objective: dict[str, Any],
     variables: dict[str, dict[str, Any]],
@@ -61,17 +59,15 @@ def solve_integer_program(
     solver: str = "CBC",
     time_limit_seconds: float | None = None,
 ) -> dict[str, Any]:
-    """Solve an integer or mixed-integer programming problem using PuLP."""
+    """Solve an integer programming problem using PuLP."""
     try:
         # Parse and validate input
         obj = Objective(**objective)
-        vars_dict = {name: Variable(**var_data) for name, var_data in variables.items()}
+        vars_dict = {name: Variable(**var_def) for name, var_def in variables.items()}
         constraints_list = [Constraint(**constraint) for constraint in constraints]
 
-        # Create solver
-        pulp_solver = PuLPSolver(solver_name=solver)
-
-        # Solve problem (same method handles integer/binary variables)
+        # Create and solve problem with integer variables
+        pulp_solver = PuLPSolver(solver)
         result = pulp_solver.solve_linear_program(
             objective=obj,
             variables=vars_dict,
@@ -79,20 +75,17 @@ def solve_integer_program(
             time_limit=time_limit_seconds,
         )
 
-        logger.info(
-            f"Integer program solved with status: {result.get('status') if isinstance(result, dict) else result}"
-        )
-        return result if isinstance(result, dict) else {"error": "Invalid result type"}
+        return result
 
     except Exception as e:
-        logger.error(f"Error in solve_integer_program: {e}")
+        logger.error(f"Integer programming error: {e}")
         return {
             "status": "error",
-            "objective_value": None,
-            "execution_time": 0.0,
             "error_message": f"Failed to solve integer program: {str(e)}",
+            "objective_value": None,
             "variables": {},
-            "solver_info": {"solver_name": solver},
+            "execution_time": 0.0,
+            "solver_info": {},
         }
 
 
@@ -147,7 +140,9 @@ def register_linear_programming_tools(mcp: FastMCP[Any]) -> None:
                 ]
             )
         """
-        return solve_linear_program(objective, variables, constraints, solver, time_limit_seconds)
+        result = solve_linear_program(objective, variables, constraints, solver, time_limit_seconds)
+        result_dict: dict[str, Any] = result
+        return result_dict
 
     @mcp.tool()
     def solve_integer_program_tool(
@@ -193,6 +188,10 @@ def register_linear_programming_tools(mcp: FastMCP[Any]) -> None:
                 ]
             )
         """
-        return solve_integer_program(objective, variables, constraints, solver, time_limit_seconds)
+        result = solve_integer_program(
+            objective, variables, constraints, solver, time_limit_seconds
+        )
+        result_dict: dict[str, Any] = result
+        return result_dict
 
     logger.info("Registered linear programming tools")

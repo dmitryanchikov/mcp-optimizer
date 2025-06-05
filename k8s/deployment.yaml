@@ -6,7 +6,6 @@ metadata:
   labels:
     app.kubernetes.io/name: mcp-optimizer
     app.kubernetes.io/component: server
-    app.kubernetes.io/version: "0.1.0"
 spec:
   replicas: 3
   strategy:
@@ -23,7 +22,6 @@ spec:
       labels:
         app.kubernetes.io/name: mcp-optimizer
         app.kubernetes.io/component: server
-        app.kubernetes.io/version: "0.1.0"
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8000"

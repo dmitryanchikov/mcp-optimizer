@@ -6,6 +6,7 @@ from typing import Any
 from fastmcp import FastMCP
 
 from mcp_optimizer.schemas.base import ProblemType, ValidationResult
+from mcp_optimizer.utils.resource_monitor import with_resource_limits
 
 logger = logging.getLogger(__name__)
 
@@ -500,6 +501,7 @@ def validate_production_problem(data: dict[str, Any]) -> ValidationResult:
 def register_validation_tools(mcp: FastMCP[Any]) -> None:
     """Register validation tools with the MCP server."""
 
+    @with_resource_limits(timeout_seconds=30.0, estimated_memory_mb=50.0)
     @mcp.tool()
     def validate_optimization_input(
         problem_type: str,

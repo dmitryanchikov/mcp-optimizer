@@ -13,6 +13,8 @@ from fastmcp import FastMCP
 from ortools.sat.python import cp_model
 from pydantic import BaseModel, Field, validator
 
+from mcp_optimizer.utils.resource_monitor import with_resource_limits
+
 from ..schemas.base import OptimizationResult, OptimizationStatus
 
 logger = logging.getLogger(__name__)
@@ -113,6 +115,7 @@ class ShiftSchedulingInput(BaseModel):
         return v
 
 
+@with_resource_limits(timeout_seconds=120.0, estimated_memory_mb=150.0)
 def solve_job_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
     """Solve Job Shop Scheduling Problem using OR-Tools CP-SAT.
 
@@ -278,6 +281,7 @@ def solve_job_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
         )
 
 
+@with_resource_limits(timeout_seconds=90.0, estimated_memory_mb=120.0)
 def solve_shift_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
     """Solve Shift Scheduling Problem using OR-Tools CP-SAT.
 
@@ -504,7 +508,8 @@ def register_scheduling_tools(mcp: FastMCP[Any]) -> None:
         }
 
         result = solve_job_scheduling(input_data)
-        return result.to_dict()
+        result_dict: dict[str, Any] = result.model_dump()
+        return result_dict
 
     @mcp.tool()
     def solve_employee_shift_scheduling(
@@ -535,6 +540,7 @@ def register_scheduling_tools(mcp: FastMCP[Any]) -> None:
         }
 
         result = solve_shift_scheduling(input_data)
-        return result.to_dict()
+        result_dict: dict[str, Any] = result.model_dump()
+        return result_dict
 
     logger.info("Registered scheduling tools")

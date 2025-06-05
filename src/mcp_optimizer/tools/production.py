@@ -13,6 +13,8 @@ import pulp
 from fastmcp import FastMCP
 from pydantic import BaseModel, Field, validator
 
+from mcp_optimizer.utils.resource_monitor import with_resource_limits
+
 from ..schemas.base import OptimizationResult, OptimizationStatus
 
 
@@ -97,6 +99,7 @@ class ProductionPlanningInput(BaseModel):
         return v
 
 
+@with_resource_limits(timeout_seconds=120.0, estimated_memory_mb=150.0)
 def solve_production_planning(input_data: dict[str, Any]) -> OptimizationResult:
     """Solve Production Planning Problem using PuLP.
 
@@ -480,14 +483,8 @@ def optimize_production(
         }
 
         result = solve_production_planning(input_data)
-        return {
-            "status": result.status,
-            "objective_value": result.objective_value,
-            "variables": result.variables,
-            "execution_time": result.execution_time,
-            "solver_info": result.solver_info,
-            "error_message": result.error_message,
-        }
+        result_dict: dict[str, Any] = result.model_dump()
+        return result_dict
 
     except Exception as e:
         return {
@@ -544,4 +541,5 @@ def register_production_tools(mcp: FastMCP[Any]) -> None:
         }
 
         result = solve_production_planning(input_data)
-        return result.model_dump()
+        result_dict: dict[str, Any] = result.model_dump()
+        return result_dict
