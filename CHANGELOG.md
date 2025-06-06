@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.9] - 2025-06-06
+
 ### Added
 - **Automated Test Scripts**: Comprehensive testing automation for local and Docker builds
   - Added `test_local_package.sh` for local package build and functionality testing
