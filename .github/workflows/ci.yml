@@ -93,6 +93,7 @@ jobs:
   build:
     needs: [test, security]
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/hotfix/')
     permissions:
       contents: read
       packages: write
@@ -134,6 +135,9 @@ jobs:
           type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
           type=raw,value=${{ steps.version.outputs.tag }},enable=${{ steps.version.outputs.tag != '' }}
           type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
+          type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
+          type=match,pattern=release/v(.*),group=1,suffix=-rc
+          type=match,pattern=hotfix/v(.*),group=1,suffix=-hotfix
 
     - name: Debug metadata output
       run: |

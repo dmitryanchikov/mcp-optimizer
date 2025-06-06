@@ -11,7 +11,9 @@ from typing import Any
 
 import pulp
 from fastmcp import FastMCP
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
+
+from mcp_optimizer.utils.resource_monitor import with_resource_limits
 
 from ..schemas.base import OptimizationResult, OptimizationStatus
 
@@ -27,9 +29,10 @@ class Product(BaseModel):
     max_production: float | None = Field(default=None, ge=0)
     setup_cost: float = Field(default=0.0, ge=0)
 
-    @validator("max_production")
-    def validate_max_production(cls, v: float | None, values: dict[str, Any]) -> float | None:
-        if v is not None and "min_production" in values and v < values["min_production"]:
+    @field_validator("max_production")
+    @classmethod
+    def validate_max_production(cls, v: float, info: ValidationInfo) -> float:
+        if info.data and "min_production" in info.data and v < info.data["min_production"]:
             raise ValueError("max_production must be >= min_production")
         return v
 
@@ -52,9 +55,10 @@ class DemandConstraint(BaseModel):
     max_demand: float | None = Field(default=None, ge=0)
     period: int | None = Field(default=None, ge=0)
 
-    @validator("max_demand")
-    def validate_max_demand(cls, v: float | None, values: dict[str, Any]) -> float | None:
-        if v is not None and "min_demand" in values and v < values["min_demand"]:
+    @field_validator("max_demand")
+    @classmethod
+    def validate_max_demand(cls, v: float, info: ValidationInfo) -> float:
+        if info.data and "min_demand" in info.data and v < info.data["min_demand"]:
             raise ValueError("max_demand must be >= min_demand")
         return v
 
@@ -73,30 +77,29 @@ class ProductionPlanningInput(BaseModel):
     allow_backorders: bool = Field(default=False)
     inventory_cost: float = Field(default=0.0, ge=0)
 
-    @validator("products")
+    @field_validator("products")
+    @classmethod
     def validate_products(cls, v: list[Product]) -> list[Product]:
         if not v:
-            raise ValueError("At least one product required")
+            raise ValueError("Must have at least one product")
         return v
 
-    @validator("resources")
+    @field_validator("resources")
+    @classmethod
     def validate_resources(cls, v: dict[str, Resource]) -> dict[str, Resource]:
         if not v:
-            raise ValueError("At least one resource required")
+            raise ValueError("Must have at least one resource")
         return v
 
-    @validator("demand_constraints")
-    def validate_demand_constraints(
-        cls, v: list[DemandConstraint], values: dict[str, Any]
-    ) -> list[DemandConstraint]:
-        if "products" in values:
-            product_names = {product.name for product in values["products"]}
-            for constraint in v:
-                if constraint.product not in product_names:
-                    raise ValueError(f"Unknown product '{constraint.product}' in demand constraint")
+    @field_validator("demand_constraints")
+    @classmethod
+    def validate_demand_constraints(cls, v: list[DemandConstraint]) -> list[DemandConstraint]:
+        if not v:
+            raise ValueError("Must have at least one demand constraint")
         return v
 
 
+@with_resource_limits(timeout_seconds=120.0, estimated_memory_mb=150.0)
 def solve_production_planning(input_data: dict[str, Any]) -> OptimizationResult:
     """Solve Production Planning Problem using PuLP.
 
@@ -236,7 +239,7 @@ def solve_production_planning(input_data: dict[str, Any]) -> OptimizationResult:
         # Objective function
         if planning_input.objective == "maximize_profit":
             # Maximize profit = revenue - production costs - setup costs - inventory costs
-            total_profit = 0
+            total_profit = 0.0
 
             for period in range(horizon):
                 # Production profit
@@ -266,7 +269,7 @@ def solve_production_planning(input_data: dict[str, Any]) -> OptimizationResult:
 
         elif planning_input.objective == "minimize_cost":
             # Minimize total production and setup costs
-            total_cost = 0
+            total_cost = 0.0
 
             for period in range(horizon):
                 # Production costs (negative profit)
@@ -306,8 +309,8 @@ def solve_production_planning(input_data: dict[str, Any]) -> OptimizationResult:
         if prob.status == pulp.LpStatusOptimal:
             # Extract solution
             production_plan: list[dict[str, Any]] = []
-            total_profit = 0.0  # type: ignore
-            total_cost = 0.0  # type: ignore
+            total_profit = 0.0
+            total_cost = 0.0
             total_time = 0.0
             resource_utilization: dict[str, list[float]] = {}
 
@@ -349,8 +352,8 @@ def solve_production_planning(input_data: dict[str, Any]) -> OptimizationResult:
                         product_cost
                     )
 
-                    total_profit += float(product_profit)  # type: ignore
-                    total_cost += float(product_cost)  # type: ignore
+                    total_profit += float(product_profit)
+                    total_cost += float(product_cost)
                     total_time += float(product_time)
 
                 # Calculate resource usage for this period
@@ -480,14 +483,8 @@ def optimize_production(
         }
 
         result = solve_production_planning(input_data)
-        return {
-            "status": result.status,
-            "objective_value": result.objective_value,
-            "variables": result.variables,
-            "execution_time": result.execution_time,
-            "solver_info": result.solver_info,
-            "error_message": result.error_message,
-        }
+        result_dict: dict[str, Any] = result.model_dump()
+        return result_dict
 
     except Exception as e:
         return {
@@ -544,4 +541,5 @@ def register_production_tools(mcp: FastMCP[Any]) -> None:
         }
 
         result = solve_production_planning(input_data)
-        return result.model_dump()
+        result_dict: dict[str, Any] = result.model_dump()
+        return result_dict

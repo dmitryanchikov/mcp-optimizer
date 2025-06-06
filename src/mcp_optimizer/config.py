@@ -3,11 +3,11 @@
 from enum import Enum
 
 from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class MCPTransport(str, Enum):
-    """MCP transport protocols."""
+class TransportMode(str, Enum):
+    """Transport mode for the server."""
 
     STDIO = "stdio"
     SSE = "sse"
@@ -41,20 +41,20 @@ class SolverType(str, Enum):
 class Settings(BaseSettings):
     """Application settings."""
 
-    # MCP Protocol settings
-    mcp_transport: MCPTransport = Field(
-        default=MCPTransport.STDIO,
-        description="MCP transport protocol",
+    # Transport configuration
+    transport_mode: TransportMode = Field(
+        default=TransportMode.STDIO,
+        description="Server transport mode",
     )
-    mcp_port: int = Field(
+    server_port: int = Field(
         default=8000,
-        description="Port for SSE transport",
+        description="Server port (for SSE and HTTP modes)",
         ge=1,
         le=65535,
     )
-    mcp_host: str = Field(
+    server_host: str = Field(
         default="127.0.0.1",  # nosec B104 - localhost only by default for security
-        description="Host for SSE transport",
+        description="Server host (for SSE and HTTP modes)",
     )
 
     # Solver configuration
@@ -105,11 +105,10 @@ class Settings(BaseSettings):
         ge=30,
     )
 
-    class Config:
-        """Pydantic configuration."""
-
-        env_prefix = ""
-        case_sensitive = False
+    model_config = SettingsConfigDict(
+        env_prefix="",
+        case_sensitive=False,
+    )
 
 
 # Global settings instance

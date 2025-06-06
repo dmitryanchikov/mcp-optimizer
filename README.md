@@ -9,6 +9,25 @@
 
 ## 🚀 Quick Start
 
+### 🚀 Method 1: uvx (Recommended - No Installation Required!)
+```bash
+# Works instantly without any setup!
+uvx mcp-optimizer
+
+# That's it! The server is now running and ready for MCP clients.
+```
+
+### 📦 Method 2: pip install
+```bash
+pip install mcp-optimizer
+
+# For running integration examples (requires additional dependencies)
+pip install "mcp-optimizer[examples]"
+
+# Run the server
+mcp-optimizer
+```
+
 ### Integration with LLM Clients
 
 #### Claude Desktop Integration
@@ -66,17 +85,23 @@ Then add to your Claude Desktop config:
 }
 ```
 
-*Method B: Docker with SSE transport (for HTTP/web clients)*
+*Method B: Docker with SSE transport (for remote MCP clients)*
 ```bash
-# Run SSE server on port 8000
-docker run -d -p 8000:8000 ghcr.io/dmitryanchikov/mcp-optimizer:latest \
-  python -m mcp_optimizer.main --transport sse --host 0.0.0.0
+# Run SSE server on port 8000 (uses environment variable)
+docker run -d -p 8000:8000 -e TRANSPORT_MODE=sse \
+  ghcr.io/dmitryanchikov/mcp-optimizer:latest
 
-# Or with custom port
+# Or with CLI argument and custom port
 docker run -d -p 9000:9000 ghcr.io/dmitryanchikov/mcp-optimizer:latest \
   python -m mcp_optimizer.main --transport sse --host 0.0.0.0 --port 9000
+
+# Check server status
+docker logs <container-name>
+
+# Verify SSE endpoint (should show event stream)
+curl -i http://localhost:8000/sse
 ```
-Then use HTTP client to connect to `http://localhost:8000` (requires additional MCP HTTP client setup)
+**SSE Endpoint**: `http://localhost:8000/sse` (Server-Sent Events for MCP communication)
 
 #### Cursor Integration
 
@@ -132,8 +157,6 @@ echo '{"jsonrpc": "2.0", "method": "initialize", "params": {"protocolVersion": "
 
 **Note**: The local build creates both wheel (`.whl`) and source distribution (`.tar.gz`) files in the `dist/` directory. The wheel file is recommended for uvx installation as it's faster and doesn't require compilation.
 
-**Troubleshooting**: If you encounter event loop issues when using uvx, the package includes automatic detection and handling of existing event loops using `nest-asyncio`.
-
 #### Docker with Custom Configuration
 ```bash
 # Build locally with optimization
@@ -166,9 +189,9 @@ python main.py
 
 #### Transport Modes
 
-MCP Optimizer supports two transport protocols:
+MCP Optimizer supports two MCP transport protocols:
 - **STDIO**: Standard input/output for direct MCP client integration (Claude Desktop, Cursor, etc.)
-- **SSE**: Server-Sent Events over HTTP for web-based clients and custom integrations
+- **SSE**: Server-Sent Events over HTTP for web-based MCP clients and remote integrations
 
 **STDIO Transport (Default - for MCP clients like Claude Desktop)**
 ```bash
@@ -182,9 +205,9 @@ uv run python -m mcp_optimizer.main --transport stdio
 python main.py
 ```
 
-**SSE Transport (for HTTP/web clients)**
+**SSE Transport (for remote MCP clients)**
 ```bash
-# SSE mode for HTTP clients (default port 8000)
+# SSE mode for remote MCP clients (default port 8000)
 uvx mcp-optimizer --transport sse
 # or
 uv run python -m mcp_optimizer.main --transport sse
@@ -210,6 +233,11 @@ uvx mcp-optimizer --help
 #   --debug                   Enable debug mode
 #   --reload                  Enable auto-reload for development
 #   --log-level {DEBUG,INFO,WARNING,ERROR}  Logging level (default: INFO)
+#
+# Environment Variables:
+#   TRANSPORT_MODE={stdio,sse}  Override transport mode
+#   SERVER_HOST=0.0.0.0        Override server host
+#   SERVER_PORT=8000           Override server port
 ```
 
 ## 🎯 Features
@@ -226,6 +254,26 @@ uvx mcp-optimizer --help
 - **Production Planning** - Multi-period production planning
 
 ### Testing
+
+#### Automated Test Scripts
+
+**Quick Testing:**
+```bash
+# Test local package build and functionality
+./scripts/test_local_package.sh
+
+# Test Docker container build and functionality  
+./scripts/test_docker_container.sh
+
+# Run comprehensive test suite (both package and Docker)
+./scripts/test_all.sh
+
+# Run only specific tests
+./scripts/test_all.sh --skip-docker    # Skip Docker tests
+./scripts/test_all.sh --skip-package   # Skip package tests
+```
+
+**Manual Testing:**
 ```bash
 # Run simple functionality tests
 uv run python tests/test_integration/comprehensive_test.py
@@ -238,6 +286,27 @@ uv run pytest tests/ -v
 
 # Run with coverage
 uv run pytest tests/ --cov=src/mcp_optimizer --cov-report=html
+```
+
+**Test Scripts Features:**
+- ✅ **Local Package Testing**: Build, STDIO/SSE modes, CLI functionality
+- ✅ **Docker Container Testing**: Image build, environment variables, health checks
+- ✅ **Comprehensive Suite**: Parallel execution with detailed reporting
+- ✅ **Automatic Cleanup**: Processes and containers cleaned up after tests
+- ✅ **Cross-Platform**: Works on macOS, Linux (requires Docker for container tests)
+
+**Requirements:**
+- For local tests: `uv`, `curl`, `lsof`, `gtimeout`/`timeout`
+- For Docker tests: `docker` + local requirements
+- macOS: `brew install coreutils` (for gtimeout)
+
+**CI/CD Integration:**
+```yaml
+# GitHub Actions example
+- name: Test Package
+  run: ./scripts/test_local_package.sh
+- name: Test Docker
+  run: ./scripts/test_docker_container.sh
 ```
 
 ## 📊 Usage Examples
@@ -318,8 +387,25 @@ result = optimize_portfolio(
 
 ```
 mcp-optimizer/
-├── src/mcp_optimizer/
-│   ├── tools/           # 9 categories of optimization tools
+├── LICENSE                     # MIT License
+├── README.md                   # Project documentation
+├── CHANGELOG.md               # Release notes
+├── CONTRIBUTING.md            # Contribution guidelines
+├── pyproject.toml             # Python project configuration
+├── uv.lock                    # Dependency lock file
+├── main.py                    # Entry point
+├── Dockerfile                 # Main Docker configuration
+├── docker-compose.yml         # Multi-service setup
+├── .dockerignore             # Docker ignore rules
+├── .gitignore                # Git ignore rules
+├── .python-version           # Python version specification
+├── src/mcp_optimizer/        # Main source code
+│   ├── __init__.py
+│   ├── __main__.py           # Module entry point
+│   ├── main.py               # Application entry point
+│   ├── mcp_server.py         # MCP server implementation
+│   ├── config.py             # Configuration management
+│   ├── tools/                # 9 categories of optimization tools
 │   │   ├── linear_programming.py
 │   │   ├── assignment.py
 │   │   ├── knapsack.py
@@ -327,18 +413,23 @@ mcp-optimizer/
 │   │   ├── scheduling.py
 │   │   ├── financial.py
 │   │   └── production.py
-│   ├── solvers/         # PuLP and OR-Tools integration
+│   ├── solvers/              # PuLP and OR-Tools integration
 │   │   ├── pulp_solver.py
 │   │   └── ortools_solver.py
-│   ├── schemas/         # Pydantic validation schemas
-│   ├── utils/           # Utility functions
-│   ├── config.py        # Configuration
-│   └── mcp_server.py    # Main MCP server
-├── tests/               # Comprehensive test suite
-├── docs/                # Documentation
-├── k8s/                 # Kubernetes deployment
-├── monitoring/          # Grafana/Prometheus setup
-└── main.py             # Entry point
+│   ├── schemas/              # Pydantic validation schemas
+│   └── utils/                # Utility functions
+├── tests/                    # Comprehensive test suite
+│   ├── test_tools/           # Tool-specific tests
+│   ├── test_solvers/         # Solver tests
+│   └── test_integration/     # Integration tests
+├── scripts/                  # Automation scripts
+├── examples/                 # Usage examples and prompts
+│   ├── en/                   # English examples
+│   └── ru/                   # Russian examples
+├── k8s/                      # Kubernetes deployment manifests
+└── monitoring/               # Grafana/Prometheus setup
+    └── grafana/
+        └── datasources/
 ```
 
 ## 🧪 Test Results
@@ -651,3 +742,34 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 **Made with ❤️ for the optimization community**
+
+## 📊 Docker Image Size Analysis
+
+The MCP Optimizer Docker image has been optimized to balance functionality and size:
+
+| Component | Size | % of Total | Description |
+|-----------|------|------------|-------------|
+| **Python packages (/venv)** | **237.0 MB** | **42.8%** | Virtual environment with dependencies |
+| **System libraries (/usr)** | **173.2 MB** | **31.3%** | Base Debian system + Python |
+| **Other** | **137.4 MB** | **24.8%** | Base image, filesystem |
+| **Configuration (/var, /etc)** | **6.2 MB** | **1.1%** | System settings |
+| **Application code (/code)** | **0.2 MB** | **0.04%** | MCP Optimizer source code |
+
+### Key Dependencies by Size
+- **OR-Tools**: 75.0 MB (27.8% of venv) - Critical optimization solver (requires pandas + numpy)
+- **pandas**: 45.0 MB (16.7% of venv) - Required by OR-Tools for data operations
+- **NumPy**: 24.0 MB (8.9% of venv) - Required by OR-Tools for numerical computing
+- **PuLP**: 34.9 MB (12.9% of venv) - Linear programming solver  
+- **FastMCP**: 15.2 MB (5.6% of venv) - MCP server framework
+- **Pydantic**: 12.8 MB (4.7% of venv) - Data validation
+
+### Dependencies Analysis
+- **Core packages cannot be reduced further**: OR-Tools (our main optimization engine) requires both pandas and numpy as mandatory dependencies
+- **Optional examples moved**: Additional packages for examples (streamlit, plotly) moved to `[examples]` extra
+- **Minimal core impact**: Moving examples to optional dependencies only affects development/demo usage
+
+### Image Optimization
+- **Current optimized size**: ~420MB
+- **Core functionality**: Includes all necessary dependencies for production optimization
+- **Example support**: Install with `[examples]` extra for additional demo functionality
+- **OR-Tools constraint**: Cannot remove pandas/numpy due to hard dependency requirements

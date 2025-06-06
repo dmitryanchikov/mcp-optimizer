@@ -6,11 +6,13 @@ from typing import Any
 from fastmcp import FastMCP
 
 from mcp_optimizer.solvers.ortools_solver import ORToolsSolver
+from mcp_optimizer.utils.resource_monitor import with_resource_limits
 
 logger = logging.getLogger(__name__)
 
 
 # Define functions that can be imported directly
+@with_resource_limits(timeout_seconds=60.0, estimated_memory_mb=80.0)
 def solve_assignment_problem(
     workers: list[str],
     tasks: list[str],
@@ -229,7 +231,7 @@ def register_assignment_tools(mcp: FastMCP[Any]) -> None:
         Returns:
             Dictionary with solution status, assignments, total cost, and execution time
         """
-        return solve_assignment_problem(
+        result = solve_assignment_problem(
             workers=workers,
             tasks=tasks,
             costs=costs,
@@ -237,6 +239,8 @@ def register_assignment_tools(mcp: FastMCP[Any]) -> None:
             max_tasks_per_worker=max_tasks_per_worker,
             min_tasks_per_worker=min_tasks_per_worker,
         )
+        result_dict: dict[str, Any] = result
+        return result_dict
 
     @mcp.tool()
     def solve_transportation_problem_tool(

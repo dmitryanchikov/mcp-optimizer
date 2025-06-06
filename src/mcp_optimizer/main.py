@@ -6,7 +6,7 @@ import sys
 
 import uvicorn
 
-from mcp_optimizer.config import MCPTransport, settings
+from mcp_optimizer.config import TransportMode, settings
 from mcp_optimizer.mcp_server import create_mcp_server
 
 
@@ -43,7 +43,7 @@ def run_stdio_server() -> None:
 async def run_sse_server() -> None:
     """Run MCP server with SSE transport."""
     logging.info(
-        f"Starting MCP Optimizer server with SSE transport on {settings.mcp_host}:{settings.mcp_port}"
+        f"Starting MCP Optimizer server with SSE transport on {settings.server_host}:{settings.server_port}"
     )
 
     mcp_server = create_mcp_server()
@@ -54,8 +54,8 @@ async def run_sse_server() -> None:
     # Run with uvicorn
     config = uvicorn.Config(
         app,
-        host=settings.mcp_host,
-        port=settings.mcp_port,
+        host=settings.server_host,
+        port=settings.server_port,
         log_level=settings.log_level.value.lower(),
         reload=settings.reload,
         access_log=settings.debug,
@@ -74,20 +74,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--transport",
         choices=["stdio", "sse"],
-        default=settings.mcp_transport.value,
-        help="MCP transport protocol (default: %(default)s)",
+        default=settings.transport_mode.value,
+        help="Transport mode (default: %(default)s)",
     )
 
     parser.add_argument(
         "--port",
         type=int,
-        default=settings.mcp_port,
+        default=settings.server_port,
         help="Port for SSE transport (default: %(default)s)",
     )
 
     parser.add_argument(
         "--host",
-        default=settings.mcp_host,
+        default=settings.server_host,
         help="Host for SSE transport (default: %(default)s)",
     )
 
@@ -120,9 +120,9 @@ def main() -> None:
     args = parse_args()
 
     # Update settings from command line arguments
-    settings.mcp_transport = MCPTransport(args.transport)
-    settings.mcp_port = args.port
-    settings.mcp_host = args.host
+    settings.transport_mode = TransportMode(args.transport)
+    settings.server_port = args.port
+    settings.server_host = args.host
     settings.debug = args.debug
     settings.reload = args.reload
     if isinstance(args.log_level, str):
@@ -136,7 +136,7 @@ def main() -> None:
     setup_logging()
 
     try:
-        if settings.mcp_transport == MCPTransport.STDIO:
+        if settings.transport_mode == TransportMode.STDIO:
             run_stdio_server()
         else:
             # For SSE transport, we need async

@@ -11,7 +11,9 @@ from typing import Any
 
 from fastmcp import FastMCP
 from ortools.sat.python import cp_model
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
+
+from mcp_optimizer.utils.resource_monitor import with_resource_limits
 
 from ..schemas.base import OptimizationResult, OptimizationStatus
 
@@ -35,7 +37,8 @@ class Job(BaseModel):
     deadline: int | None = Field(default=None, ge=0)
     release_time: int = Field(default=0, ge=0)
 
-    @validator("tasks")
+    @field_validator("tasks")
+    @classmethod
     def validate_tasks(cls, v: list[Task]) -> list[Task]:
         if not v:
             raise ValueError("Job must have at least one task")
@@ -51,13 +54,15 @@ class JobSchedulingInput(BaseModel):
     objective: str = Field(default="makespan", pattern="^(makespan|total_completion_time)$")
     time_limit_seconds: float = Field(default=30.0, ge=0)
 
-    @validator("jobs")
+    @field_validator("jobs")
+    @classmethod
     def validate_jobs(cls, v: list[Job]) -> list[Job]:
         if not v:
             raise ValueError("Must have at least one job")
         return v
 
-    @validator("machines")
+    @field_validator("machines")
+    @classmethod
     def validate_machines(cls, v: list[str]) -> list[str]:
         if not v:
             raise ValueError("Must have at least one machine")
@@ -73,9 +78,10 @@ class Shift(BaseModel):
     required_staff: int = Field(ge=1)
     skills_required: list[str] = Field(default_factory=list)
 
-    @validator("end")
-    def validate_end_time(cls, v: int, values: dict[str, Any]) -> int:
-        if "start" in values and v <= values["start"]:
+    @field_validator("end")
+    @classmethod
+    def validate_end_time(cls, v: int, info: ValidationInfo) -> int:
+        if info.data and "start" in info.data and v <= info.data["start"]:
             raise ValueError("End time must be after start time")
         return v
 
@@ -100,19 +106,22 @@ class ShiftSchedulingInput(BaseModel):
     employee_constraints: dict[str, EmployeeConstraints] = Field(default_factory=dict)
     time_limit_seconds: float = Field(default=30.0, ge=0)
 
-    @validator("employees")
+    @field_validator("employees")
+    @classmethod
     def validate_employees(cls, v: list[str]) -> list[str]:
         if not v:
             raise ValueError("Must have at least one employee")
         return v
 
-    @validator("shifts")
+    @field_validator("shifts")
+    @classmethod
     def validate_shifts(cls, v: list[Shift]) -> list[Shift]:
         if not v:
             raise ValueError("Must have at least one shift")
         return v
 
 
+@with_resource_limits(timeout_seconds=120.0, estimated_memory_mb=150.0)
 def solve_job_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
     """Solve Job Shop Scheduling Problem using OR-Tools CP-SAT.
 
@@ -278,6 +287,7 @@ def solve_job_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
         )
 
 
+@with_resource_limits(timeout_seconds=90.0, estimated_memory_mb=120.0)
 def solve_shift_scheduling(input_data: dict[str, Any]) -> OptimizationResult:
     """Solve Shift Scheduling Problem using OR-Tools CP-SAT.
 
@@ -504,7 +514,8 @@ def register_scheduling_tools(mcp: FastMCP[Any]) -> None:
         }
 
         result = solve_job_scheduling(input_data)
-        return result.to_dict()
+        result_dict: dict[str, Any] = result.model_dump()
+        return result_dict
 
     @mcp.tool()
     def solve_employee_shift_scheduling(
@@ -535,6 +546,7 @@ def register_scheduling_tools(mcp: FastMCP[Any]) -> None:
         }
 
         result = solve_shift_scheduling(input_data)
-        return result.to_dict()
+        result_dict: dict[str, Any] = result.model_dump()
+        return result_dict
 
     logger.info("Registered scheduling tools")

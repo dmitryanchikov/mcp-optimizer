@@ -7,6 +7,157 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.9] - 2025-06-06
+
+### Added
+- **Automated Test Scripts**: Comprehensive testing automation for local and Docker builds
+  - Added `test_local_package.sh` for local package build and functionality testing
+  - Added `test_docker_container.sh` for Docker container build and validation
+  - Added `test_all.sh` for comprehensive test suite with parallel execution
+  - Cross-platform compatibility (macOS/Linux) with automatic cleanup
+
+### Removed
+- **Non-functional Docker builds**: Removed distroless Docker configuration
+  - Deleted `docker/Dockerfile.distroless` that was incompatible with OR-Tools
+  - Removed `docker/README.md` containing documentation for non-working solutions
+  - Cleaned up references to non-functional distroless builds in documentation
+- **Redundant documentation**: Consolidated documentation structure
+  - Removed `docker_size_analysis.md` - migrated to main README.md
+  - Eliminated duplicate documentation and improved information organization
+
+### Added
+- **License**: Added MIT License file to the repository
+  - Created LICENSE file with proper MIT license text and copyright notice
+  - Enables proper open source licensing and distribution
+- **Manual Docker Push**: New workflow_dispatch option for pushing Docker images from any branch
+  - Enables testing and debugging of Docker images from feature/merge branches
+  - Controlled via push_docker boolean input in GitHub Actions UI
+  - Separate docker-push-manual job handles these requests
+- **Enhanced Workflow Documentation**: Comprehensive inline documentation
+  - Detailed job structure and strategy comments in CI/CD pipeline
+  - Anti-duplication logic documentation
+  - Branch-specific behavior explanations
+- **Resource Monitoring System**: Comprehensive resource monitoring and concurrency control
+  - Added `ResourceMonitor` class with memory monitoring via `psutil`
+  - Implemented asyncio semaphore-based concurrency control for optimization requests
+  - Created `@with_resource_limits` decorator for timeout and memory estimation
+  - Added custom exceptions: `MemoryExceededError`, `ConcurrencyLimitError`
+  - Health check endpoints with detailed resource metrics and status reporting
+
+- **MCP Server Enhancements**: Production-ready server configuration
+  - Integrated resource monitoring into MCP server with health endpoints
+  - Added server info and resource statistics endpoints for monitoring
+  - Graceful shutdown with proper resource cleanup
+  - Real-time resource status tracking with configurable limits
+
+- **MCP Transport Support**: Flexible MCP server deployment modes
+  - Added SSE transport mode for remote MCP clients with uvicorn
+  - Maintained stdio transport for local MCP client compatibility
+  - Environment-based transport mode selection via `TRANSPORT_MODE`
+  - Explicit uvicorn configuration with single worker architecture
+
+- **Tool Resource Management**: Individual resource limits for optimization tools
+  - Applied `@with_resource_limits` decorator to all 15 optimization tools
+  - Configured individual timeouts and memory estimates per tool type:
+    - Linear/Integer Programming: 60-90s, 100-150MB
+    - Routing (TSP/VRP): 120-180s, 150-250MB
+    - Scheduling: 90-120s, 120-200MB
+    - Knapsack/Assignment: 60s, 80-100MB
+    - Financial/Production: 90-120s, 150-200MB
+
+### Fixed
+- **CI/CD Pipeline**: Critical fixes for Docker image duplication and workflow execution
+  - Fixed double Docker image pushes during releases (docker-push-auto + docker-push-release)
+  - Fixed pipeline not executing on merge/* branches due to incorrect job conditions
+  - Fixed incorrect PR titles for hotfixes showing "release" instead of "hotfix"
+  - Corrected test and security job conditions to properly handle push events vs workflow_dispatch
+- **Merge-back Automation**: Enhanced release type detection and naming
+  - Added release_type output to release job for proper hotfix/release/emergency distinction
+  - Updated merge-back PR titles and descriptions to correctly reflect hotfix vs release
+  - Fixed branch naming in merge-back process to handle different release types
+  - Enhanced commit messages and labels to use appropriate release type terminology
+- **Code Quality**: Replaced Russian comments with English in release scripts
+  - Updated `scripts/finalize_release.py` to use English comments throughout
+  - Improved code maintainability and international collaboration support
+- **Environment Configuration**: Corrected environment variable naming
+  - Fixed environment variables by removing incorrect `MCP_OPTIMIZER_` prefix
+  - Updated variable names to match application expectations: `LOG_LEVEL`, `MAX_SOLVE_TIME`, etc.
+  - Synchronized configuration across Docker, Kubernetes, and local development
+
+- **Kubernetes Configuration**: Removed hardcoded version labels from deployment manifests
+  - Removed obsolete `app.kubernetes.io/version: "0.1.0"` labels from k8s/deployment.yaml
+  - Prevents version drift and maintenance overhead in Kubernetes manifests
+  - Version information available through Docker image tags instead
+
+- **Type Safety**: Comprehensive mypy error resolution
+  - Fixed all mypy type checking errors across 23 source files
+  - Corrected return type annotations in tool functions
+  - Added explicit type annotations to suppress no-any-return warnings
+  - Fixed decorator ordering for proper type inference
+
+- **Docker Configuration**: Corrected Docker Compose and Dockerfile settings
+  - Removed invalid `target: production` from docker-compose.yml
+  - Updated Dockerfile environment variables to match application expectations
+  - Fixed health check configuration for proper server validation
+
+### Changed
+- **CI/CD Architecture**: Separated build and Docker push responsibilities for better control
+  - Split Docker operations into separate jobs: docker-push-auto, docker-push-manual, docker-push-release
+  - Added push_docker option to workflow_dispatch for manual Docker pushes from non-main/develop branches
+  - Implemented anti-duplication logic: docker-push-auto skips main branch when release is detected
+  - Enhanced workflow summary with detailed status reporting for all Docker operations
+- **Docker Registry Strategy**: Improved tagging and push logic
+  - main branch → main tag (only for non-release pushes)
+  - develop branch → develop tag (always)
+  - feature/* → feature-{name} tag (manual only via workflow_dispatch)
+  - merge/* → merge-{name} tag (manual only via workflow_dispatch)
+  - releases → versioned tags (v1.2.3, 1.2, 1, latest) via docker-push-release
+- **Documentation**: Streamlined Docker documentation and removed non-working solutions
+  - Removed `docker/` directory containing non-functional distroless Docker image
+  - Updated main README.md to reflect only working Docker optimization approaches
+  - Removed `docker_size_analysis.md` file, migrated relevant content to main README
+  - Clarified that distroless approach is incompatible with OR-Tools requirements
+- **Dependencies Architecture**: Refactored project dependencies for cleaner separation
+  - Moved `pandas>=2.0.0` and `numpy>=1.24.0` from core dependencies to optional `[examples]` extra
+  - Core package now includes only essential dependencies: `fastmcp`, `ortools`, `pulp`, `pydantic`, `uvicorn`
+  - Updated installation instructions: use `pip install "mcp-optimizer[examples]"` for running integration examples
+  - **Note**: pandas and numpy still present in Docker images due to OR-Tools hard requirements
+- **Documentation**: Updated README and examples documentation
+  - Added installation instructions for examples dependencies in README.md
+  - Updated examples/integration/README.md with correct dependency installation commands
+  - Enhanced streamlit_dashboard.py with comprehensive installation notes
+  - Updated Docker image size analysis with correct dependency constraints explanation
+- **Docker Image Analysis**: Clarified dependency constraints in optimization documentation
+  - Documented that OR-Tools requires pandas and numpy as mandatory dependencies (`pandas>=2.0.0`, `numpy>=1.13.3`)
+  - Updated image size analysis to reflect actual constraints preventing further optimization
+  - Current optimized size: ~420MB (cannot be reduced further due to OR-Tools requirements)
+- **Architecture**: Single worker + asyncio semaphore design
+  - Explicitly configured `WORKERS=1` for optimal CPU-intensive math operations
+  - Implemented asyncio-based concurrency instead of multiple uvicorn workers
+  - Leveraged GIL release in PuLP/OR-Tools for true parallelism within single process
+  - Optimized memory usage through shared libraries and process pools
+
+- **Configuration Management**: Unified environment variable strategy
+  - Standardized configuration across Docker Compose, Kubernetes, and local development
+  - Added comprehensive environment variable documentation in deployment configs
+  - Enhanced configuration validation and error reporting
+
+- **Dependency Management**: Added psutil for resource monitoring
+  - Added `psutil>=5.9.0` to project dependencies for memory monitoring
+  - Implemented efficient resource monitoring with caching to minimize overhead
+  - Added lazy loading and background monitoring for long-running operations
+
+### Documentation
+- **Architecture Documentation**: Documented single worker design rationale
+  - Explained why 1 worker + asyncio is more efficient than N workers for math optimization
+  - Documented GIL release behavior in PuLP/OR-Tools for parallel execution
+  - Added performance comparison and resource utilization analysis
+
+- **Configuration Guide**: Comprehensive environment variable documentation
+  - Documented all configuration options with examples and defaults
+  - Added deployment-specific configuration recommendations
+  - Enhanced troubleshooting guides for resource monitoring issues
+
 ## [0.3.8] - 2025-05-28
 
 ### Fixed

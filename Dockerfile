@@ -71,10 +71,13 @@ ENV PATH="/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONHASHSEED=random \
     PYTHONOPTIMIZE=2 \
-    MCP_OPTIMIZER_LOG_LEVEL=INFO \
-    MCP_OPTIMIZER_MAX_SOLVE_TIME=300 \
-    MCP_OPTIMIZER_MAX_MEMORY_MB=1024 \
-    MCP_OPTIMIZER_MAX_CONCURRENT_REQUESTS=10
+    LOG_LEVEL=INFO \
+    MAX_SOLVE_TIME=300 \
+    MAX_MEMORY_MB=1024 \
+    MAX_CONCURRENT_REQUESTS=10 \
+    TRANSPORT_MODE=sse \
+    SERVER_HOST=0.0.0.0 \
+    SERVER_PORT=8000
 
 HEALTHCHECK --interval=30s --timeout=30s --start-period=30s --retries=3 \
     CMD python -c "from mcp_optimizer.mcp_server import create_mcp_server; create_mcp_server()" || exit 1

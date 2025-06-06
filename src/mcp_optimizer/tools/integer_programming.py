@@ -3,14 +3,19 @@
 This module provides tools for solving integer and mixed-integer programming problems.
 """
 
+import logging
 import time
 from typing import Any
 
 from fastmcp import FastMCP
 from ortools.linear_solver import pywraplp
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
+
+from mcp_optimizer.utils.resource_monitor import with_resource_limits
 
 from ..schemas.base import OptimizationResult, OptimizationStatus
+
+logger = logging.getLogger(__name__)
 
 
 class IntegerVariable(BaseModel):
@@ -20,6 +25,13 @@ class IntegerVariable(BaseModel):
     type: str = Field(pattern="^(integer|binary|continuous)$")
     lower: float | None = None
     upper: float | None = None
+
+    @field_validator("upper")
+    @classmethod
+    def validate_upper(cls, v: float | None, info: ValidationInfo) -> float | None:
+        if v is not None and info.data and "lower" in info.data and v < info.data["lower"]:
+            raise ValueError("upper bound must be >= lower bound")
+        return v
 
 
 class IntegerConstraint(BaseModel):
@@ -37,6 +49,13 @@ class IntegerObjective(BaseModel):
     sense: str = Field(pattern="^(minimize|maximize)$")
     coefficients: dict[str, float]  # variable_name -> coefficient
 
+    @field_validator("coefficients")
+    @classmethod
+    def validate_coefficients(cls, v: dict[str, float]) -> dict[str, float]:
+        if not v:
+            raise ValueError("Objective must have at least one coefficient")
+        return v
+
 
 class IntegerProgramInput(BaseModel):
     """Input schema for Integer Programming."""
@@ -48,25 +67,22 @@ class IntegerProgramInput(BaseModel):
     time_limit_seconds: float | None = Field(default=None, ge=0)
     gap_tolerance: float | None = Field(default=None, ge=0, le=1)
 
-    @validator("variables")
+    @field_validator("variables")
+    @classmethod
     def validate_variables(cls, v: dict[str, IntegerVariable]) -> dict[str, IntegerVariable]:
         if not v:
-            raise ValueError("At least one variable required")
+            raise ValueError("Must have at least one variable")
         return v
 
-    @validator("constraints")
-    def validate_constraints(
-        cls, v: list[IntegerConstraint], values: dict[str, Any]
-    ) -> list[IntegerConstraint]:
-        if "variables" in values:
-            var_names = set(values["variables"].keys())
-            for constraint in v:
-                for var_name in constraint.expression.keys():
-                    if var_name not in var_names:
-                        raise ValueError(f"Unknown variable '{var_name}' in constraint")
+    @field_validator("constraints")
+    @classmethod
+    def validate_constraints(cls, v: list[IntegerConstraint]) -> list[IntegerConstraint]:
+        if not v:
+            raise ValueError("Must have at least one constraint")
         return v
 
 
+@with_resource_limits(timeout_seconds=90.0, estimated_memory_mb=150.0)
 def solve_integer_program(input_data: dict[str, Any]) -> OptimizationResult:
     """Solve Integer Programming Problem using OR-Tools.
 
@@ -269,14 +285,14 @@ def solve_integer_program(input_data: dict[str, Any]) -> OptimizationResult:
         )
 
 
-def solve_binary_program(input_data: dict[str, Any]) -> OptimizationResult:
+def solve_binary_program(input_data: dict[str, Any]) -> dict[str, Any]:
     """Solve Binary Programming Problem (convenience function).
 
     Args:
         input_data: Binary programming problem specification
 
     Returns:
-        OptimizationResult with optimal solution
+        Dictionary with optimization result
     """
     # Convert all variables to binary type
     if "variables" in input_data:
@@ -286,19 +302,23 @@ def solve_binary_program(input_data: dict[str, Any]) -> OptimizationResult:
                 var_def["lower"] = 0
                 var_def["upper"] = 1
 
-    return solve_integer_program(input_data)
+    result = solve_integer_program(input_data)
+    result_dict: dict[str, Any] = result.model_dump()
+    return result_dict
 
 
-def solve_mixed_integer_program(input_data: dict[str, Any]) -> OptimizationResult:
+def solve_mixed_integer_program(input_data: dict[str, Any]) -> dict[str, Any]:
     """Solve Mixed-Integer Programming Problem (alias for solve_integer_program).
 
     Args:
         input_data: Mixed-integer programming problem specification
 
     Returns:
-        OptimizationResult with optimal solution
+        Dictionary with optimization result
     """
-    return solve_integer_program(input_data)
+    result = solve_integer_program(input_data)
+    result_dict: dict[str, Any] = result.model_dump()
+    return result_dict
 
 
 def register_integer_programming_tools(mcp: FastMCP[Any]) -> None:
@@ -333,4 +353,5 @@ def register_integer_programming_tools(mcp: FastMCP[Any]) -> None:
         }
 
         result = solve_integer_program(input_data)
-        return result.model_dump()
+        result_dict: dict[str, Any] = result.model_dump()
+        return result_dict

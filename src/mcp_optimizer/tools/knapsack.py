@@ -8,11 +8,13 @@ from fastmcp import FastMCP
 from ortools.algorithms.python import knapsack_solver
 
 from mcp_optimizer.config import settings
+from mcp_optimizer.utils.resource_monitor import with_resource_limits
 
 logger = logging.getLogger(__name__)
 
 
 # Define function that can be imported directly
+@with_resource_limits(timeout_seconds=60.0, estimated_memory_mb=100.0)
 def solve_knapsack_problem(
     items: list[dict[str, Any]],
     capacity: float,
@@ -265,8 +267,10 @@ def register_knapsack_tools(mcp: FastMCP[Any]) -> None:
                 volume_capacity=5
             )
         """
-        return solve_knapsack_problem(
+        result = solve_knapsack_problem(
             items, capacity, volume_capacity, knapsack_type, max_items_per_type
         )
+        result_dict: dict[str, Any] = result
+        return result_dict
 
     logger.info("Registered knapsack tools")

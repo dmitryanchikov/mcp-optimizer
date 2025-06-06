@@ -5,15 +5,20 @@ This module provides tools for solving routing problems including:
 - Vehicle Routing Problem (VRP)
 """
 
+import logging
 import math
 import time
 from typing import Any
 
 from fastmcp import FastMCP
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
+
+from mcp_optimizer.utils.resource_monitor import with_resource_limits
 
 from ..schemas.base import OptimizationResult, OptimizationStatus
+
+logger = logging.getLogger(__name__)
 
 
 class Location(BaseModel):
@@ -28,12 +33,11 @@ class Location(BaseModel):
     time_window: tuple[int, int] | None = None
     service_time: int = Field(default=0, ge=0)
 
-    @validator("time_window")
+    @field_validator("time_window")
+    @classmethod
     def validate_time_window(cls, v: tuple[int, int] | None) -> tuple[int, int] | None:
-        if v is not None and len(v) == 2:
-            start, end = v
-            if start >= end:
-                raise ValueError("Time window start must be less than end")
+        if v is not None and v[0] >= v[1]:
+            raise ValueError("Time window start must be before end")
         return v
 
 
@@ -56,10 +60,11 @@ class TSPInput(BaseModel):
     return_to_start: bool = True
     time_limit_seconds: float = Field(default=30.0, ge=0)
 
-    @validator("start_location")
-    def validate_start_location(cls, v: int, values: dict[str, Any]) -> int:
-        if "locations" in values and v >= len(values["locations"]):
-            raise ValueError("Start location index out of range")
+    @field_validator("start_location")
+    @classmethod
+    def validate_start_location(cls, v: int, info: ValidationInfo) -> int:
+        if info.data and "locations" in info.data and v >= len(info.data["locations"]):
+            raise ValueError("start_location must be a valid location index")
         return v
 
 
@@ -73,10 +78,11 @@ class VRPInput(BaseModel):
     depot: int = Field(default=0, ge=0)
     time_limit_seconds: float = Field(default=30.0, ge=0)
 
-    @validator("depot")
-    def validate_depot(cls, v: int, values: dict[str, Any]) -> int:
-        if "locations" in values and v >= len(values["locations"]):
-            raise ValueError("Depot index out of range")
+    @field_validator("depot")
+    @classmethod
+    def validate_depot(cls, v: int, info: ValidationInfo) -> int:
+        if info.data and "locations" in info.data and v >= len(info.data["locations"]):
+            raise ValueError("depot must be a valid location index")
         return v
 
 
@@ -139,6 +145,7 @@ def haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> fl
     return R * c
 
 
+@with_resource_limits(timeout_seconds=120.0, estimated_memory_mb=150.0)
 def solve_traveling_salesman(input_data: dict[str, Any]) -> OptimizationResult:
     """Solve Traveling Salesman Problem using OR-Tools.
 
@@ -280,6 +287,7 @@ def solve_traveling_salesman(input_data: dict[str, Any]) -> OptimizationResult:
         )
 
 
+@with_resource_limits(timeout_seconds=180.0, estimated_memory_mb=150.0)
 def solve_vehicle_routing(input_data: dict[str, Any]) -> OptimizationResult:
     """Solve Vehicle Routing Problem using OR-Tools.
 
@@ -504,7 +512,8 @@ def register_routing_tools(mcp: FastMCP[Any]) -> None:
         }
 
         result = solve_traveling_salesman(input_data)
-        return result.model_dump()
+        result_dict: dict[str, Any] = result.model_dump()
+        return result_dict
 
     @mcp.tool()
     def solve_vehicle_routing_problem(
@@ -538,4 +547,5 @@ def register_routing_tools(mcp: FastMCP[Any]) -> None:
         }
 
         result = solve_vehicle_routing(input_data)
-        return result.model_dump()
+        result_dict: dict[str, Any] = result.model_dump()
+        return result_dict
