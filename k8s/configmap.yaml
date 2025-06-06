@@ -12,7 +12,7 @@ data:
   MAX_MEMORY_MB: "2048"
   MAX_CONCURRENT_REQUESTS: "5"
   # MCP SSE server configuration for remote access
-  TRANSPORT_MODE: "mcp_sse"
+  TRANSPORT_MODE: "sse"
   SERVER_HOST: "0.0.0.0"
   SERVER_PORT: "8000"
   PYTHONPATH: "/app/src" 

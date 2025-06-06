@@ -7,13 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Automated Test Scripts**: Comprehensive testing automation for local and Docker builds
+  - Added `test_local_package.sh` for local package build and functionality testing
+  - Added `test_docker_container.sh` for Docker container build and validation
+  - Added `test_all.sh` for comprehensive test suite with parallel execution
+  - Cross-platform compatibility (macOS/Linux) with automatic cleanup
+  - CI/CD integration ready with detailed reporting and timing
+
 ### Removed
 - **Non-functional Docker builds**: Removed distroless Docker configuration
   - Deleted `docker/Dockerfile.distroless` that was incompatible with OR-Tools
   - Removed `docker/README.md` containing documentation for non-working solutions
   - Cleaned up references to non-functional distroless builds in documentation
-- **Redundant documentation**: Removed `docker_size_analysis.md`
-  - Migrated Docker image size analysis to main README.md
+- **Redundant documentation**: Consolidated documentation structure
+  - Removed `docker_size_analysis.md` - migrated to main README.md
+  - Removed `scripts/README.md` - consolidated into main README.md test section
   - Eliminated duplicate documentation and improved information organization
 
 ### Added

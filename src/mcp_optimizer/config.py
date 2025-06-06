@@ -9,8 +9,8 @@ from pydantic_settings import BaseSettings
 class TransportMode(str, Enum):
     """Transport mode for the server."""
 
-    MCP_STDIO = "mcp_stdio"
-    MCP_SSE = "mcp_sse"
+    STDIO = "stdio"
+    SSE = "sse"
 
 
 class LogLevel(str, Enum):
@@ -43,7 +43,7 @@ class Settings(BaseSettings):
 
     # Transport configuration
     transport_mode: TransportMode = Field(
-        default=TransportMode.MCP_STDIO,
+        default=TransportMode.STDIO,
         description="Server transport mode",
     )
     server_port: int = Field(

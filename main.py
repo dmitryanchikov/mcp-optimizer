@@ -53,7 +53,7 @@ async def main() -> None:
     setup_logging()
     
     try:
-        if settings.transport_mode == TransportMode.MCP_SSE:
+        if settings.transport_mode == TransportMode.SSE:
             # MCP over HTTP SSE - proper MCP protocol via HTTP Server-Sent Events
             await run_mcp_sse()
         else:
@@ -72,7 +72,7 @@ mcp = create_mcp_server()
 
 if __name__ == "__main__":
     # Run async main if needed for SSE, otherwise sync for stdio
-    if settings.transport_mode == TransportMode.MCP_SSE:
+    if settings.transport_mode == TransportMode.SSE:
         asyncio.run(main())
     else:
         # For stdio mode, run sync
