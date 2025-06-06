@@ -26,7 +26,7 @@ def get_current_version() -> str:
     pyproject_path = Path("pyproject.toml")
     content = pyproject_path.read_text()
     # Extract version from [project] section only
-    project_section = re.search(r'\[project\](.*?)(?=\n\[|\Z)', content, re.DOTALL)
+    project_section = re.search(r"\[project\](.*?)(?=\n\[|\Z)", content, re.DOTALL)
     if not project_section:
         raise ValueError("Could not find [project] section in pyproject.toml")
 
@@ -45,9 +45,9 @@ def update_version(new_version: str) -> None:
     # Use a more specific regex to avoid updating other version fields
     updated_content = re.sub(
         r'(\[project\].*?version = ")[^"]+(")',
-        rf'\g<1>{new_version}\g<2>',
+        rf"\g<1>{new_version}\g<2>",
         content,
-        flags=re.DOTALL
+        flags=re.DOTALL,
     )
 
     pyproject_path.write_text(updated_content)
@@ -56,7 +56,7 @@ def update_version(new_version: str) -> None:
 
 def update_changelog(version: str) -> None:
     """Update CHANGELOG.md with release date.
-    
+
     For details on changelog format, see Changelog Guidelines in CONTRIBUTING.md
     """
     changelog_path = Path("CHANGELOG.md")
@@ -187,8 +187,8 @@ def create_hotfix_branch(version: str) -> str:
 
 def validate_version_increment(current: str, new: str, release_type: str) -> bool:
     """Validate that version increment is correct."""
-    current_parts = [int(x) for x in current.split('.')]
-    new_parts = [int(x) for x in new.split('.')]
+    current_parts = [int(x) for x in current.split(".")]
+    new_parts = [int(x) for x in new.split(".")]
 
     if release_type == "major":
         expected = [current_parts[0] + 1, 0, 0]
@@ -228,7 +228,7 @@ def main():
 
     if args.type:
         # Auto-calculate version based on type
-        parts = [int(x) for x in current_version.split('.')]
+        parts = [int(x) for x in current_version.split(".")]
         if args.type == "major":
             new_version = f"{parts[0] + 1}.0.0"
         elif args.type == "minor":

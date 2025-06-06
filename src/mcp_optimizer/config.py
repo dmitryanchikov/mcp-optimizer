@@ -3,7 +3,7 @@
 from enum import Enum
 
 from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class TransportMode(str, Enum):
@@ -105,11 +105,10 @@ class Settings(BaseSettings):
         ge=30,
     )
 
-    class Config:
-        """Pydantic configuration."""
-
-        env_prefix = ""
-        case_sensitive = False
+    model_config = SettingsConfigDict(
+        env_prefix="",
+        case_sensitive=False,
+    )
 
 
 # Global settings instance

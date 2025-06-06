@@ -7,7 +7,7 @@ Interactive web dashboard for MCP Optimizer with real-time optimization capabili
 Installation:
     # Install mcp-optimizer with examples dependencies
     pip install "mcp-optimizer[examples]"
-    
+
     # Or install dependencies manually
     pip install mcp-optimizer streamlit plotly pandas numpy
 
@@ -29,23 +29,28 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+
+# Создаем простой SolverConfig класс
+class SolverConfig:
+    def __init__(self, timeout=30, max_iterations=1000, tolerance=1e-6, threads=4):
+        self.timeout = timeout
+        self.max_iterations = max_iterations
+        self.tolerance = tolerance
+        self.threads = threads
+
+
 # Import mcp-optimizer components
 try:
     from mcp_optimizer import (
         AssignmentSolver,
         KnapsackSolver,
         LinearProgrammingSolver,
-        OptimizationEngine,
-        OptimizationResult,
         PortfolioOptimizer,
         RoutingSolver,
-        SolverConfig,
         TransportationSolver,
     )
 except ImportError:
-    st.error(
-        "Error: mcp-optimizer package not found. Install with: pip install mcp-optimizer"
-    )
+    st.error("Error: mcp-optimizer package not found. Install with: pip install mcp-optimizer")
     st.stop()
 
 # Page configuration
@@ -221,9 +226,7 @@ def linear_programming_interface():
         coefficients = []
 
         for i in range(num_vars):
-            coef = st.number_input(
-                f"Coefficient x{i + 1}", value=1.0, key=f"obj_coef_{i}"
-            )
+            coef = st.number_input(f"Coefficient x{i + 1}", value=1.0, key=f"obj_coef_{i}")
             coefficients.append(coef)
 
     with col2:
@@ -361,9 +364,7 @@ def transportation_interface():
         num_destinations = st.number_input("Number of Destinations", 2, 6, 4)
         demand = []
         for i in range(num_destinations):
-            d = st.number_input(
-                f"Destination {i + 1} Demand", value=75, key=f"demand_{i}"
-            )
+            d = st.number_input(f"Destination {i + 1} Demand", value=75, key=f"demand_{i}")
             demand.append(d)
 
     st.write("**Transportation Costs**")
@@ -382,9 +383,7 @@ def transportation_interface():
         costs.append(row)
 
     if st.button("🚀 Solve Transportation", type="primary"):
-        solve_transportation_problem(
-            supply, demand, costs, num_sources, num_destinations
-        )
+        solve_transportation_problem(supply, demand, costs, num_sources, num_destinations)
 
 
 def solve_transportation_problem(supply, demand, costs, num_sources, num_destinations):
@@ -427,17 +426,11 @@ def knapsack_interface():
     for i in range(num_items):
         col1, col2, col3 = st.columns(3)
         with col1:
-            name = st.text_input(
-                f"Item {i + 1} Name", value=f"Item_{i + 1}", key=f"item_name_{i}"
-            )
+            name = st.text_input(f"Item {i + 1} Name", value=f"Item_{i + 1}", key=f"item_name_{i}")
         with col2:
-            weight = st.number_input(
-                "Weight", value=np.random.randint(5, 30), key=f"weight_{i}"
-            )
+            weight = st.number_input("Weight", value=np.random.randint(5, 30), key=f"weight_{i}")
         with col3:
-            value = st.number_input(
-                "Value", value=np.random.randint(10, 50), key=f"value_{i}"
-            )
+            value = st.number_input("Value", value=np.random.randint(10, 50), key=f"value_{i}")
 
         items.append({"name": name, "weight": weight, "value": value})
 
@@ -558,10 +551,7 @@ def portfolio_interface():
         expected_returns = []
         for asset in assets:
             ret = (
-                st.number_input(
-                    f"{asset} Expected Return", value=12.0, key=f"return_{asset}"
-                )
-                / 100
+                st.number_input(f"{asset} Expected Return", value=12.0, key=f"return_{asset}") / 100
             )
             expected_returns.append(ret)
 
@@ -670,7 +660,7 @@ def visualize_assignment(result, cost_matrix, size):
     # Heatmap
     fig = px.imshow(
         assignment_matrix,
-        labels=dict(x="Tasks", y="Workers", color="Assigned"),
+        labels={"x": "Tasks", "y": "Workers", "color": "Assigned"},
         x=[f"Task {j + 1}" for j in range(size)],
         y=[f"Worker {i + 1}" for i in range(size)],
         color_continuous_scale="Blues",
@@ -692,13 +682,9 @@ def visualize_transportation(result, costs, supply, demand):
 
     fig.add_trace(go.Bar(name="Supply", x=sources, y=supply, marker_color="lightblue"))
 
-    fig.add_trace(
-        go.Bar(name="Demand", x=destinations, y=demand, marker_color="lightcoral")
-    )
+    fig.add_trace(go.Bar(name="Demand", x=destinations, y=demand, marker_color="lightcoral"))
 
-    fig.update_layout(
-        title="Supply vs Demand", xaxis_title="Locations", yaxis_title="Quantity"
-    )
+    fig.update_layout(title="Supply vs Demand", xaxis_title="Locations", yaxis_title="Quantity")
 
     st.plotly_chart(fig, use_container_width=True)
 
@@ -813,7 +799,7 @@ def results_analysis():
         st.metric("Avg Solve Time", f"{avg_time:.3f}s")
 
     with col3:
-        problem_types = len(set(h["problem_type"] for h in history))
+        problem_types = len({h["problem_type"] for h in history})
         st.metric("Problem Types", problem_types)
 
     with col4:
@@ -952,9 +938,7 @@ def problem_templates():
             st.write(f"**Example:** {template['example']}")
 
             if st.button(f"Load {name} Template", key=f"template_{name}"):
-                st.success(
-                    f"Template '{name}' loaded! Switch to Optimization Studio tab."
-                )
+                st.success(f"Template '{name}' loaded! Switch to Optimization Studio tab.")
 
 
 def optimization_history():
@@ -984,9 +968,7 @@ def optimization_history():
 
     # Detailed view
     if st.checkbox("Show Detailed View"):
-        selected_id = st.selectbox(
-            "Select Optimization", range(1, len(history_data) + 1)
-        )
+        selected_id = st.selectbox("Select Optimization", range(1, len(history_data) + 1))
 
         if selected_id:
             h = st.session_state.optimization_history[selected_id - 1]
@@ -1039,15 +1021,15 @@ def settings_panel():
     # Performance settings
     st.subheader("Performance Settings")
 
-    enable_caching = st.checkbox("Enable Result Caching", value=True)
-    auto_save = st.checkbox("Auto-save Results", value=True)
-    max_history = st.number_input("Max History Items", 10, 1000, 100)
+    _enable_caching = st.checkbox("Enable Result Caching", value=True)
+    _auto_save = st.checkbox("Auto-save Results", value=True)
+    _max_history = st.number_input("Max History Items", 10, 1000, 100)
 
     # Visualization settings
     st.subheader("Visualization Settings")
 
-    theme = st.selectbox("Chart Theme", ["plotly", "plotly_white", "plotly_dark"])
-    show_animations = st.checkbox("Show Animations", value=True)
+    _theme = st.selectbox("Chart Theme", ["plotly", "plotly_white", "plotly_dark"])
+    _show_animations = st.checkbox("Show Animations", value=True)
 
     # Apply settings
     if st.button("💾 Save Settings"):
@@ -1070,9 +1052,7 @@ def export_results():
                 "solve_time": h["solve_time"],
                 "objective_value": h["result"].objective_value,
                 "status": h["result"].status,
-                "variables": h["result"].variables
-                if hasattr(h["result"], "variables")
-                else None,
+                "variables": h["result"].variables if hasattr(h["result"], "variables") else None,
             }
         )
 

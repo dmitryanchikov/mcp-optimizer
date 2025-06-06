@@ -30,9 +30,7 @@ try:
         TransportationSolver,
     )
 except ImportError:
-    print(
-        "Error: mcp-optimizer package not found. Install with: pip install mcp-optimizer"
-    )
+    print("Error: mcp-optimizer package not found. Install with: pip install mcp-optimizer")
     exit(1)
 
 # Configure logging
@@ -377,9 +375,7 @@ class MCPOptimizerExamples:
         logger.info("Pareto optimal solution found")
         logger.info(f"Weighted objective value: {result.objective_value:.2f}")
 
-        for name, value in zip(
-            problem["variable_names"], result.variables, strict=False
-        ):
+        for name, value in zip(problem["variable_names"], result.variables, strict=False):
             logger.info(f"{name}: {value:.2f}")
 
         return result

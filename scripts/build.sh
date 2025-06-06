@@ -35,7 +35,6 @@ echo -e "${GREEN}✅ Docker is available${NC}"
 # Build the image
 echo -e "${YELLOW}🔨 Building image: ${FULL_IMAGE_NAME}${NC}"
 docker build \
-    --target production \
     --tag "${IMAGE_NAME}:${IMAGE_TAG}" \
     --tag "${FULL_IMAGE_NAME}" \
     --build-arg BUILDKIT_INLINE_CACHE=1 \

@@ -12,39 +12,36 @@ def test_detection_patterns():
         {
             "message": "Merge pull request #123 from user/release/v1.2.3",
             "expected_type": "release_branch",
-            "expected_version": "1.2.3"
+            "expected_version": "1.2.3",
         },
         {
             "message": "Merge pull request #456 from dmitryanchikov/release/v2.0.0",
             "expected_type": "release_branch",
-            "expected_version": "2.0.0"
+            "expected_version": "2.0.0",
         },
-
         # Hotfix branch merges
         {
             "message": "Merge pull request #789 from user/hotfix/v1.1.1",
             "expected_type": "hotfix_branch",
-            "expected_version": "1.1.1"
+            "expected_version": "1.1.1",
         },
-
         # Commit message patterns
         {
             "message": "chore: prepare release v1.3.0",
             "expected_type": "commit_message",
-            "expected_version": "1.3.0"
+            "expected_version": "1.3.0",
         },
-
         # Non-release messages
         {
             "message": "feat: add new optimization algorithm",
             "expected_type": "none",
-            "expected_version": None
+            "expected_version": None,
         },
         {
             "message": "Merge pull request #999 from user/feature/new-solver",
             "expected_type": "none",
-            "expected_version": None
-        }
+            "expected_version": None,
+        },
     ]
 
     print("🧪 Testing Release Detection Patterns")
@@ -54,13 +51,19 @@ def test_detection_patterns():
         print(f"\nTest {i}: {test['message'][:50]}...")
 
         # Test release branch pattern
-        release_match = re.search(r"Merge pull request #\d+ from [^/]+/release/v([0-9]+\.[0-9]+\.[0-9]+)", test['message'])
+        release_match = re.search(
+            r"Merge pull request #\d+ from [^/]+/release/v([0-9]+\.[0-9]+\.[0-9]+)", test["message"]
+        )
 
         # Test hotfix branch pattern
-        hotfix_match = re.search(r"Merge pull request #\d+ from [^/]+/hotfix/v([0-9]+\.[0-9]+\.[0-9]+)", test['message'])
+        hotfix_match = re.search(
+            r"Merge pull request #\d+ from [^/]+/hotfix/v([0-9]+\.[0-9]+\.[0-9]+)", test["message"]
+        )
 
         # Test commit message pattern
-        commit_match = re.search(r'chore: prepare release v([0-9]+\.[0-9]+\.[0-9]+)', test['message'])
+        commit_match = re.search(
+            r"chore: prepare release v([0-9]+\.[0-9]+\.[0-9]+)", test["message"]
+        )
 
         detected_type = "none"
         detected_version = None
@@ -76,8 +79,8 @@ def test_detection_patterns():
             detected_version = commit_match.group(1)
 
         # Check results
-        type_match = detected_type == test['expected_type']
-        version_match = detected_version == test['expected_version']
+        type_match = detected_type == test["expected_type"]
+        version_match = detected_version == test["expected_version"]
 
         status = "✅ PASS" if (type_match and version_match) else "❌ FAIL"
 
@@ -102,7 +105,7 @@ def test_version_validation():
         ("1.2.3-rc", False),
         ("1.2.3-alpha.1", False),
         ("", False),
-        ("abc", False)
+        ("abc", False),
     ]
 
     version_pattern = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
@@ -127,53 +130,61 @@ def simulate_detection_logic():
             "merge_msg": "Merge pull request #123 from user/release/v1.2.0",
             "current_version": "1.2.0",
             "previous_version": "1.1.0",
-            "changelog_entry": True
+            "changelog_entry": True,
         },
         {
             "name": "Hotfix Release",
             "merge_msg": "Merge pull request #456 from user/hotfix/v1.1.1",
             "current_version": "1.1.1",
             "previous_version": "1.1.0",
-            "changelog_entry": True
+            "changelog_entry": True,
         },
         {
             "name": "Version Bump Only",
             "merge_msg": "feat: add new feature",
             "current_version": "1.3.0",
             "previous_version": "1.2.0",
-            "changelog_entry": True
+            "changelog_entry": True,
         },
         {
             "name": "Commit Message Fallback",
             "merge_msg": "chore: prepare release v1.4.0",
             "current_version": "1.4.0",
             "previous_version": "1.3.0",
-            "changelog_entry": False
+            "changelog_entry": False,
         },
         {
             "name": "No Release",
             "merge_msg": "feat: add new feature",
             "current_version": "1.2.0",
             "previous_version": "1.2.0",
-            "changelog_entry": False
-        }
+            "changelog_entry": False,
+        },
     ]
 
     for scenario in scenarios:
         print(f"\n📋 Scenario: {scenario['name']}")
 
         # Method 1: Release branch merge
-        release_match = re.search(r"Merge pull request #\d+ from [^/]+/release/v([0-9]+\.[0-9]+\.[0-9]+)", scenario['merge_msg'])
+        release_match = re.search(
+            r"Merge pull request #\d+ from [^/]+/release/v([0-9]+\.[0-9]+\.[0-9]+)",
+            scenario["merge_msg"],
+        )
 
         # Method 2: Hotfix branch merge
-        hotfix_match = re.search(r"Merge pull request #\d+ from [^/]+/hotfix/v([0-9]+\.[0-9]+\.[0-9]+)", scenario['merge_msg'])
+        hotfix_match = re.search(
+            r"Merge pull request #\d+ from [^/]+/hotfix/v([0-9]+\.[0-9]+\.[0-9]+)",
+            scenario["merge_msg"],
+        )
 
         # Method 3: Version change + changelog
-        version_changed = scenario['current_version'] != scenario['previous_version']
-        has_changelog = scenario['changelog_entry']
+        version_changed = scenario["current_version"] != scenario["previous_version"]
+        has_changelog = scenario["changelog_entry"]
 
         # Method 4: Commit message
-        commit_match = re.search(r'chore: prepare release v([0-9]+\.[0-9]+\.[0-9]+)', scenario['merge_msg'])
+        commit_match = re.search(
+            r"chore: prepare release v([0-9]+\.[0-9]+\.[0-9]+)", scenario["merge_msg"]
+        )
 
         # Determine result
         if release_match:
