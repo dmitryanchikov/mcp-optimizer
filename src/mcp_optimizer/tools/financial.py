@@ -11,7 +11,7 @@ from typing import Any
 
 import pulp
 from fastmcp import FastMCP
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from mcp_optimizer.utils.resource_monitor import with_resource_limits
 
@@ -29,9 +29,10 @@ class Asset(BaseModel):
     min_allocation: float = Field(default=0.0, ge=0, le=1)
     max_allocation: float = Field(default=1.0, ge=0, le=1)
 
-    @validator("max_allocation")
-    def validate_max_allocation(cls, v: float, values: dict[str, Any]) -> float:
-        if "min_allocation" in values and v < values["min_allocation"]:
+    @field_validator("max_allocation")
+    @classmethod
+    def validate_max_allocation(cls, v: float, info: ValidationInfo) -> float:
+        if info.data and "min_allocation" in info.data and v < info.data["min_allocation"]:
             raise ValueError("max_allocation must be >= min_allocation")
         return v
 
@@ -52,25 +53,28 @@ class PortfolioInput(BaseModel):
     risk_free_rate: float = Field(default=0.02, ge=0)
     correlation_matrix: list[list[float]] | None = None
 
-    @validator("assets")
+    @field_validator("assets")
+    @classmethod
     def validate_assets(cls, v: list[Asset]) -> list[Asset]:
         if not v:
             raise ValueError("At least one asset required")
         return v
 
-    @validator("sector_limits")
+    @field_validator("sector_limits")
+    @classmethod
     def validate_sector_limits(cls, v: dict[str, float]) -> dict[str, float]:
         for sector, limit in v.items():
             if not (0 <= limit <= 1):
                 raise ValueError(f"Sector limit for {sector} must be between 0 and 1")
         return v
 
-    @validator("correlation_matrix")
+    @field_validator("correlation_matrix")
+    @classmethod
     def validate_correlation_matrix(
-        cls, v: list[list[float]] | None, values: dict[str, Any]
+        cls, v: list[list[float]] | None, info: ValidationInfo
     ) -> list[list[float]] | None:
-        if v is not None and "assets" in values:
-            n = len(values["assets"])
+        if v is not None and info.data and "assets" in info.data:
+            n = len(info.data["assets"])
             if len(v) != n or any(len(row) != n for row in v):
                 raise ValueError("Correlation matrix dimensions must match number of assets")
             # Check if matrix is symmetric and diagonal elements are 1

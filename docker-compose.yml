@@ -14,7 +14,7 @@ services:
       - MAX_CONCURRENT_REQUESTS=5
       - DEBUG=true
       # MCP SSE server configuration for remote access
-      - TRANSPORT_MODE=mcp_sse
+      - TRANSPORT_MODE=sse
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=8000
     volumes:
