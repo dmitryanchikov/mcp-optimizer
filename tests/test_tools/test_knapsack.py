@@ -1,10 +1,6 @@
 """Tests for knapsack tools."""
 
-import pytest
-from fastmcp import FastMCP
 from ortools.algorithms.python import knapsack_solver  # type: ignore
-
-from mcp_optimizer.tools.knapsack import register_knapsack_tools
 
 
 class TestKnapsackTools:
@@ -137,34 +133,64 @@ class TestKnapsackTools:
 class TestKnapsackToolsValidation:
     """Tests for knapsack tools input validation."""
 
-    @pytest.fixture
-    def mcp_server(self):
-        """Create MCP server with knapsack tools."""
-        mcp = FastMCP("test-server")
-        register_knapsack_tools(mcp)
-        return mcp
-
-    async def test_knapsack_tool_empty_items_validation(self, mcp_server):
+    def test_knapsack_tool_empty_items_validation(self):
         """Test knapsack tool validation with empty items."""
-        # This test would require the tool to be callable
-        # For now, we'll skip it since we need to fix the async tool calling
-        pytest.skip("Async tool calling needs to be implemented")
+        from mcp_optimizer.tools.knapsack import solve_knapsack_problem
 
-    async def test_knapsack_tool_zero_capacity_validation(self, mcp_server):
+        result = solve_knapsack_problem(items=[], capacity=10.0)
+
+        assert result["status"] == "error"
+        assert result["error_message"] == "No items provided"
+        assert result["total_value"] is None
+        assert result["selected_items"] == []
+
+    def test_knapsack_tool_zero_capacity_validation(self):
         """Test knapsack tool validation with zero capacity."""
-        pytest.skip("Async tool calling needs to be implemented")
+        from mcp_optimizer.tools.knapsack import solve_knapsack_problem
 
-    async def test_knapsack_tool_invalid_item_format_validation(self, mcp_server):
+        items = [{"name": "Item1", "value": 10, "weight": 5}]
+        result = solve_knapsack_problem(items=items, capacity=0.0)
+
+        assert result["status"] == "error"
+        assert result["error_message"] == "Capacity must be positive"
+        assert result["total_value"] is None
+        assert result["selected_items"] == []
+
+    def test_knapsack_tool_invalid_item_format_validation(self):
         """Test knapsack tool validation with invalid item format."""
-        pytest.skip("Async tool calling needs to be implemented")
+        from mcp_optimizer.tools.knapsack import solve_knapsack_problem
 
-    async def test_knapsack_tool_missing_fields_validation(self, mcp_server):
+        items = ["not_a_dict", {"name": "Item1", "value": 10, "weight": 5}]
+        result = solve_knapsack_problem(items=items, capacity=10.0)
+
+        assert result["status"] == "error"
+        assert "Item 0 must be a dictionary" in result["error_message"]
+        assert result["total_value"] is None
+        assert result["selected_items"] == []
+
+    def test_knapsack_tool_missing_fields_validation(self):
         """Test knapsack tool validation with missing required fields."""
-        pytest.skip("Async tool calling needs to be implemented")
+        from mcp_optimizer.tools.knapsack import solve_knapsack_problem
 
-    async def test_knapsack_tool_negative_values_validation(self, mcp_server):
+        items = [{"name": "Item1", "value": 10}]  # Missing weight
+        result = solve_knapsack_problem(items=items, capacity=10.0)
+
+        assert result["status"] == "error"
+        assert "missing required field: weight" in result["error_message"]
+        assert result["total_value"] is None
+        assert result["selected_items"] == []
+
+    def test_knapsack_tool_negative_values_validation(self):
         """Test knapsack tool validation with negative values."""
-        pytest.skip("Async tool calling needs to be implemented")
+        from mcp_optimizer.tools.knapsack import solve_knapsack_problem
+
+        items = [{"name": "Item1", "value": -10, "weight": 5}]
+        result = solve_knapsack_problem(items=items, capacity=10.0)
+
+        assert result["status"] == "error"
+        assert "value and weight must be non-negative" in result["error_message"]
+        assert result["total_value"] is None
+        assert result["selected_items"] == []
 
 
 class TestKnapsackSolverTypes:

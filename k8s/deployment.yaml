@@ -34,8 +34,8 @@ spec:
         fsGroup: 1000
       containers:
       - name: mcp-optimizer
-        image: mcp-optimizer:latest
-        imagePullPolicy: IfNotPresent
+        image: ghcr.io/dmitryanchikov/mcp-optimizer:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8000
           name: http

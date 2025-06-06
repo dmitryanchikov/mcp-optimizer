@@ -73,7 +73,7 @@ def parse_args() -> argparse.Namespace:
 
     parser.add_argument(
         "--transport",
-        choices=["mcp_stdio", "mcp_sse"],
+        choices=["stdio", "sse"],
         default=settings.transport_mode.value,
         help="Transport mode (default: %(default)s)",
     )
@@ -136,7 +136,7 @@ def main() -> None:
     setup_logging()
 
     try:
-        if settings.transport_mode == TransportMode.MCP_STDIO:
+        if settings.transport_mode == TransportMode.STDIO:
             run_stdio_server()
         else:
             # For SSE transport, we need async

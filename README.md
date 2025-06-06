@@ -87,15 +87,21 @@ Then add to your Claude Desktop config:
 
 *Method B: Docker with SSE transport (for remote MCP clients)*
 ```bash
-# Run SSE server on port 8000
-docker run -d -p 8000:8000 ghcr.io/dmitryanchikov/mcp-optimizer:latest \
-  python -m mcp_optimizer.main --transport sse --host 0.0.0.0
+# Run SSE server on port 8000 (uses environment variable)
+docker run -d -p 8000:8000 -e TRANSPORT_MODE=sse \
+  ghcr.io/dmitryanchikov/mcp-optimizer:latest
 
-# Or with custom port
+# Or with CLI argument and custom port
 docker run -d -p 9000:9000 ghcr.io/dmitryanchikov/mcp-optimizer:latest \
   python -m mcp_optimizer.main --transport sse --host 0.0.0.0 --port 9000
+
+# Check server status
+docker logs <container-name>
+
+# Verify SSE endpoint (should show event stream)
+curl -i http://localhost:8000/sse
 ```
-Then use MCP SSE client to connect to `http://localhost:8000` (requires MCP SSE client setup)
+**SSE Endpoint**: `http://localhost:8000/sse` (Server-Sent Events for MCP communication)
 
 #### Cursor Integration
 
@@ -227,6 +233,11 @@ uvx mcp-optimizer --help
 #   --debug                   Enable debug mode
 #   --reload                  Enable auto-reload for development
 #   --log-level {DEBUG,INFO,WARNING,ERROR}  Logging level (default: INFO)
+#
+# Environment Variables:
+#   TRANSPORT_MODE={stdio,sse}  Override transport mode
+#   SERVER_HOST=0.0.0.0        Override server host
+#   SERVER_PORT=8000           Override server port
 ```
 
 ## 🎯 Features
@@ -243,6 +254,26 @@ uvx mcp-optimizer --help
 - **Production Planning** - Multi-period production planning
 
 ### Testing
+
+#### Automated Test Scripts
+
+**Quick Testing:**
+```bash
+# Test local package build and functionality
+./scripts/test_local_package.sh
+
+# Test Docker container build and functionality  
+./scripts/test_docker_container.sh
+
+# Run comprehensive test suite (both package and Docker)
+./scripts/test_all.sh
+
+# Run only specific tests
+./scripts/test_all.sh --skip-docker    # Skip Docker tests
+./scripts/test_all.sh --skip-package   # Skip package tests
+```
+
+**Manual Testing:**
 ```bash
 # Run simple functionality tests
 uv run python tests/test_integration/comprehensive_test.py
@@ -255,6 +286,27 @@ uv run pytest tests/ -v
 
 # Run with coverage
 uv run pytest tests/ --cov=src/mcp_optimizer --cov-report=html
+```
+
+**Test Scripts Features:**
+- ✅ **Local Package Testing**: Build, STDIO/SSE modes, CLI functionality
+- ✅ **Docker Container Testing**: Image build, environment variables, health checks
+- ✅ **Comprehensive Suite**: Parallel execution with detailed reporting
+- ✅ **Automatic Cleanup**: Processes and containers cleaned up after tests
+- ✅ **Cross-Platform**: Works on macOS, Linux (requires Docker for container tests)
+
+**Requirements:**
+- For local tests: `uv`, `curl`, `lsof`, `gtimeout`/`timeout`
+- For Docker tests: `docker` + local requirements
+- macOS: `brew install coreutils` (for gtimeout)
+
+**CI/CD Integration:**
+```yaml
+# GitHub Actions example
+- name: Test Package
+  run: ./scripts/test_local_package.sh
+- name: Test Docker
+  run: ./scripts/test_docker_container.sh
 ```
 
 ## 📊 Usage Examples

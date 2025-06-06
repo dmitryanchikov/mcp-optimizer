@@ -26,7 +26,7 @@ from typing import Any
 import uvicorn
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 # Import mcp-optimizer components
 try:
@@ -42,9 +42,7 @@ try:
         TransportationSolver,
     )
 except ImportError:
-    print(
-        "Error: mcp-optimizer package not found. Install with: pip install mcp-optimizer"
-    )
+    print("Error: mcp-optimizer package not found. Install with: pip install mcp-optimizer")
     exit(1)
 
 # Configure logging
@@ -85,8 +83,9 @@ class OptimizationRequest(BaseModel):
     config: dict[str, Any] | None = None
     job_id: str | None = None
 
-    @validator("job_id", pre=True, always=True)
-    def set_job_id(cls, v):
+    @field_validator("job_id", mode="before")
+    @classmethod
+    def generate_job_id(cls, v: str | None) -> str:
         return v or str(uuid.uuid4())
 
 
@@ -175,9 +174,7 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting MCP Optimizer FastAPI service...")
     optimization_engine = OptimizationEngine(
-        config=SolverConfig(
-            timeout=300, max_iterations=10000, tolerance=1e-6, threads=4
-        )
+        config=SolverConfig(timeout=300, max_iterations=10000, tolerance=1e-6, threads=4)
     )
     logger.info("Optimization engine initialized")
 
@@ -397,24 +394,20 @@ async def optimize_sync(
 
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=f"Optimization failed: {e}"
-        )
+        ) from e
 
 
 @app.get("/jobs/{job_id}", response_model=OptimizationResponse)
 async def get_job(job_id: str):
     """Get job status and results."""
     if job_id not in job_store:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"Job {job_id} not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Job {job_id} not found")
 
     return OptimizationResponse(**job_store[job_id])
 
 
 @app.get("/jobs", response_model=JobListResponse)
-async def list_jobs(
-    page: int = 1, page_size: int = 10, status_filter: JobStatus | None = None
-):
+async def list_jobs(page: int = 1, page_size: int = 10, status_filter: JobStatus | None = None):
     """List all jobs with pagination."""
     jobs = list(job_store.values())
 
@@ -443,9 +436,7 @@ async def list_jobs(
 async def delete_job(job_id: str):
     """Delete a job."""
     if job_id not in job_store:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"Job {job_id} not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Job {job_id} not found")
 
     del job_store[job_id]
     return {"message": f"Job {job_id} deleted successfully"}
@@ -466,9 +457,7 @@ async def optimize_linear_programming(
 
 
 @app.post("/optimize/assignment", response_model=OptimizationResponse)
-async def optimize_assignment(
-    request: AssignmentRequest, background_tasks: BackgroundTasks
-):
+async def optimize_assignment(request: AssignmentRequest, background_tasks: BackgroundTasks):
     """Solve assignment problem."""
     opt_request = OptimizationRequest(
         problem_type=ProblemType.ASSIGNMENT, problem_data=request.dict()
@@ -488,9 +477,7 @@ async def optimize_transportation(
 
 
 @app.post("/optimize/knapsack", response_model=OptimizationResponse)
-async def optimize_knapsack(
-    request: KnapsackRequest, background_tasks: BackgroundTasks
-):
+async def optimize_knapsack(request: KnapsackRequest, background_tasks: BackgroundTasks):
     """Solve knapsack problem."""
     opt_request = OptimizationRequest(
         problem_type=ProblemType.KNAPSACK, problem_data=request.dict()
@@ -501,16 +488,12 @@ async def optimize_knapsack(
 @app.post("/optimize/routing", response_model=OptimizationResponse)
 async def optimize_routing(request: RoutingRequest, background_tasks: BackgroundTasks):
     """Solve routing problem."""
-    opt_request = OptimizationRequest(
-        problem_type=ProblemType.ROUTING, problem_data=request.dict()
-    )
+    opt_request = OptimizationRequest(problem_type=ProblemType.ROUTING, problem_data=request.dict())
     return await optimize(opt_request, background_tasks)
 
 
 @app.post("/optimize/portfolio", response_model=OptimizationResponse)
-async def optimize_portfolio(
-    request: PortfolioRequest, background_tasks: BackgroundTasks
-):
+async def optimize_portfolio(request: PortfolioRequest, background_tasks: BackgroundTasks):
     """Solve portfolio optimization problem."""
     opt_request = OptimizationRequest(
         problem_type=ProblemType.PORTFOLIO, problem_data=request.dict()
@@ -533,9 +516,9 @@ async def get_statistics():
     }
 
     # Count by status
-    for status in JobStatus:
-        stats["jobs_by_status"][status.value] = len(
-            [job for job in jobs if job["status"] == status]
+    for job_status in JobStatus:
+        stats["jobs_by_status"][job_status.value] = len(
+            [job for job in jobs if job["status"] == job_status]
         )
 
     # Count by type

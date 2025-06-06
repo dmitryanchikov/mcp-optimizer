@@ -9,7 +9,7 @@ from typing import Any
 
 from fastmcp import FastMCP
 from ortools.linear_solver import pywraplp
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from mcp_optimizer.utils.resource_monitor import with_resource_limits
 
@@ -26,14 +26,10 @@ class IntegerVariable(BaseModel):
     lower: float | None = None
     upper: float | None = None
 
-    @validator("upper")
-    def validate_bounds(cls, v: float | None, values: dict[str, Any]) -> float | None:
-        if (
-            v is not None
-            and "lower" in values
-            and values["lower"] is not None
-            and v < values["lower"]
-        ):
+    @field_validator("upper")
+    @classmethod
+    def validate_upper(cls, v: float | None, info: ValidationInfo) -> float | None:
+        if v is not None and info.data and "lower" in info.data and v < info.data["lower"]:
             raise ValueError("upper bound must be >= lower bound")
         return v
 
@@ -53,10 +49,11 @@ class IntegerObjective(BaseModel):
     sense: str = Field(pattern="^(minimize|maximize)$")
     coefficients: dict[str, float]  # variable_name -> coefficient
 
-    @validator("coefficients")
+    @field_validator("coefficients")
+    @classmethod
     def validate_coefficients(cls, v: dict[str, float]) -> dict[str, float]:
         if not v:
-            raise ValueError("At least one coefficient required")
+            raise ValueError("Objective must have at least one coefficient")
         return v
 
 
@@ -70,22 +67,18 @@ class IntegerProgramInput(BaseModel):
     time_limit_seconds: float | None = Field(default=None, ge=0)
     gap_tolerance: float | None = Field(default=None, ge=0, le=1)
 
-    @validator("variables")
+    @field_validator("variables")
+    @classmethod
     def validate_variables(cls, v: dict[str, IntegerVariable]) -> dict[str, IntegerVariable]:
         if not v:
-            raise ValueError("At least one variable required")
+            raise ValueError("Must have at least one variable")
         return v
 
-    @validator("constraints")
-    def validate_constraints(
-        cls, v: list[IntegerConstraint], values: dict[str, Any]
-    ) -> list[IntegerConstraint]:
-        if "variables" in values:
-            var_names = set(values["variables"].keys())
-            for constraint in v:
-                for var_name in constraint.expression.keys():
-                    if var_name not in var_names:
-                        raise ValueError(f"Unknown variable '{var_name}' in constraint")
+    @field_validator("constraints")
+    @classmethod
+    def validate_constraints(cls, v: list[IntegerConstraint]) -> list[IntegerConstraint]:
+        if not v:
+            raise ValueError("Must have at least one constraint")
         return v
 
 
