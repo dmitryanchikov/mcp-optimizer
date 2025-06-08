@@ -17,78 +17,92 @@ def validate_linear_program(data: dict[str, Any]) -> ValidationResult:
     warnings: list[str] = []
     suggestions: list[str] = []
 
-    # Check required fields
-    if "objective" not in data:
-        errors.append("Missing required field: objective")
-    elif not isinstance(data["objective"], dict):
-        errors.append("Objective must be a dictionary")
+    # Check if data is a dictionary
+    if not isinstance(data, dict):
+        errors.append(f"Input data must be a dictionary, got {type(data).__name__}")
+        suggestions.append("Provide input data as a dictionary with required fields")
     else:
-        obj = data["objective"]
-        if "sense" not in obj:
-            errors.append("Objective missing required field: sense")
-        elif obj["sense"] not in ["minimize", "maximize"]:
-            errors.append("Objective sense must be 'minimize' or 'maximize'")
+        # Check required fields
+        required_fields = ["objective", "variables", "constraints"]
+        for field in required_fields:
+            if field not in data:
+                errors.append(f"Missing required field: {field}")
 
-        if "coefficients" not in obj:
-            errors.append("Objective missing required field: coefficients")
-        elif not isinstance(obj["coefficients"], dict):
-            errors.append("Objective coefficients must be a dictionary")
-        elif not obj["coefficients"]:
-            warnings.append("Objective has no coefficients")
+        # Validate objective
+        if "objective" in data:
+            if not isinstance(data["objective"], dict):
+                errors.append("Objective must be a dictionary")
+            else:
+                obj = data["objective"]
+                if "sense" not in obj:
+                    errors.append("Objective missing required field: sense")
+                elif obj["sense"] not in ["minimize", "maximize"]:
+                    errors.append("Objective sense must be 'minimize' or 'maximize'")
 
-    if "variables" not in data:
-        errors.append("Missing required field: variables")
-    elif not isinstance(data["variables"], dict):
-        errors.append("Variables must be a dictionary")
-    elif not data["variables"]:
-        errors.append("No variables defined")
+                if "coefficients" not in obj:
+                    errors.append("Objective missing required field: coefficients")
+                elif not isinstance(obj["coefficients"], dict):
+                    errors.append("Objective coefficients must be a dictionary")
+                elif not obj["coefficients"]:
+                    warnings.append("Objective has no coefficients")
 
-    if "constraints" not in data:
-        errors.append("Missing required field: constraints")
-    elif not isinstance(data["constraints"], list):
-        errors.append("Constraints must be a list")
-    elif not data["constraints"]:
-        warnings.append("No constraints defined - problem may be unbounded")
+        # Validate variables
+        if "variables" in data:
+            if not isinstance(data["variables"], dict):
+                errors.append("Variables must be a dictionary")
+            elif not data["variables"]:
+                errors.append("No variables defined")
 
-    # Validate constraints
-    if isinstance(data.get("constraints"), list):
-        for i, constraint in enumerate(data["constraints"]):
-            if not isinstance(constraint, dict):
-                errors.append(f"Constraint {i} must be a dictionary")
-                continue
+        # Validate constraints
+        if "constraints" in data:
+            if not isinstance(data["constraints"], list):
+                errors.append("Constraints must be a list")
+            elif not data["constraints"]:
+                warnings.append("No constraints defined - problem may be unbounded")
 
-            if "expression" not in constraint:
-                errors.append(f"Constraint {i} missing required field: expression")
-            elif not isinstance(constraint["expression"], dict):
-                errors.append(f"Constraint {i} expression must be a dictionary")
+        # Validate constraints
+        if isinstance(data.get("constraints"), list):
+            for i, constraint in enumerate(data["constraints"]):
+                if not isinstance(constraint, dict):
+                    errors.append(f"Constraint {i} must be a dictionary")
+                    continue
 
-            if "operator" not in constraint:
-                errors.append(f"Constraint {i} missing required field: operator")
-            elif constraint["operator"] not in ["<=", ">=", "=="]:
-                errors.append(f"Constraint {i} operator must be '<=', '>=' or '=='")
+                if "expression" not in constraint:
+                    errors.append(f"Constraint {i} missing required field: expression")
+                elif not isinstance(constraint["expression"], dict):
+                    errors.append(f"Constraint {i} expression must be a dictionary")
 
-            if "rhs" not in constraint:
-                errors.append(f"Constraint {i} missing required field: rhs")
-            elif not isinstance(constraint["rhs"], int | float):
-                errors.append(f"Constraint {i} rhs must be a number")
+                if "operator" not in constraint:
+                    errors.append(f"Constraint {i} missing required field: operator")
+                elif constraint["operator"] not in ["<=", ">=", "=="]:
+                    errors.append(f"Constraint {i} operator must be '<=', '>=' or '=='")
 
-    # Check variable consistency
-    if isinstance(data.get("objective"), dict) and isinstance(data.get("variables"), dict):
-        obj_vars = set(data["objective"].get("coefficients", {}).keys())
-        defined_vars = set(data["variables"].keys())
+                if "rhs" not in constraint:
+                    errors.append(f"Constraint {i} missing required field: rhs")
+                elif not isinstance(constraint["rhs"], int | float):
+                    errors.append(f"Constraint {i} rhs must be a number")
 
-        undefined_vars = obj_vars - defined_vars
-        if undefined_vars:
-            errors.append(f"Variables in objective not defined: {list(undefined_vars)}")
+        # Check variable consistency
+        if isinstance(data.get("objective"), dict) and isinstance(data.get("variables"), dict):
+            coefficients = data["objective"].get("coefficients", {})
+            if isinstance(coefficients, dict):
+                obj_vars = set(coefficients.keys())
+                defined_vars = set(data["variables"].keys())
 
-        unused_vars = defined_vars - obj_vars
-        if unused_vars:
-            warnings.append(f"Defined variables not used in objective: {list(unused_vars)}")
+                undefined_vars = obj_vars - defined_vars
+                if undefined_vars:
+                    errors.append(f"Variables in objective not defined: {list(undefined_vars)}")
 
-    # Suggestions
-    if not errors:
-        suggestions.append("Consider adding variable bounds for better numerical stability")
-        suggestions.append("Use descriptive names for variables and constraints")
+                unused_vars = defined_vars - obj_vars
+                if unused_vars:
+                    warnings.append(f"Defined variables not used in objective: {list(unused_vars)}")
+            else:
+                errors.append("Objective coefficients must be a dictionary")
+
+        # Suggestions
+        if not errors:
+            suggestions.append("Consider adding variable bounds for better numerical stability")
+            suggestions.append("Use descriptive names for variables and constraints")
 
     return ValidationResult(
         is_valid=len(errors) == 0,
@@ -351,7 +365,7 @@ def validate_routing_problem(data: dict[str, Any]) -> ValidationResult:
     elif not isinstance(data["locations"], list):
         errors.append("Locations must be a list")
     elif len(data["locations"]) < 2:
-        errors.append("At least 2 locations required for routing")
+        errors.append("At least 2 locations required")
     else:
         for i, location in enumerate(data["locations"]):
             if not isinstance(location, dict):
@@ -361,8 +375,10 @@ def validate_routing_problem(data: dict[str, Any]) -> ValidationResult:
             if "name" not in location:
                 errors.append(f"Location {i} missing required field: name")
 
-            # Check coordinates
-            has_lat_lng = "lat" in location and "lng" in location
+            # Check coordinates (support both lat/lng and latitude/longitude)
+            has_lat_lng = ("lat" in location and "lng" in location) or (
+                "latitude" in location and "longitude" in location
+            )
             has_x_y = "x" in location and "y" in location
 
             if not has_lat_lng and not has_x_y and "distance_matrix" not in data:
@@ -390,6 +406,12 @@ def validate_scheduling_problem(data: dict[str, Any]) -> ValidationResult:
     errors: list[str] = []
     warnings: list[str] = []
     suggestions: list[str] = []
+
+    # Check required problem_type field
+    if "problem_type" not in data:
+        errors.append("Missing required field: problem_type")
+    elif data["problem_type"] not in ["job_shop", "shift_scheduling"]:
+        errors.append("Problem type must be 'job_shop' or 'shift_scheduling'")
 
     # Job scheduling validation
     if "jobs" in data:
@@ -452,15 +474,14 @@ def validate_portfolio_problem(data: dict[str, Any]) -> ValidationResult:
                 errors.append(f"Asset {i} must be a dictionary")
                 continue
 
-            required_fields = ["name", "expected_return", "risk"]
+            required_fields = ["symbol", "expected_return", "risk"]
             for field in required_fields:
                 if field not in asset:
                     errors.append(f"Asset {i} missing required field: {field}")
 
-    if "budget" not in data:
-        errors.append("Missing required field: budget")
-    elif not isinstance(data["budget"], (int, float)) or data["budget"] <= 0:
-        errors.append("Budget must be a positive number")
+    # Budget is optional, objective is required
+    if "objective" not in data:
+        errors.append("Missing required field: objective")
 
     return ValidationResult(
         is_valid=len(errors) == 0,
@@ -485,8 +506,8 @@ def validate_production_problem(data: dict[str, Any]) -> ValidationResult:
 
     if "resources" not in data:
         errors.append("Missing required field: resources")
-    elif not isinstance(data["resources"], dict):
-        errors.append("Resources must be a dictionary")
+    elif not isinstance(data["resources"], list):
+        errors.append("Resources must be a list")
     elif not data["resources"]:
         errors.append("At least one resource required")
 
@@ -501,7 +522,7 @@ def validate_production_problem(data: dict[str, Any]) -> ValidationResult:
 def register_validation_tools(mcp: FastMCP[Any]) -> None:
     """Register validation tools with the MCP server."""
 
-    @with_resource_limits(timeout_seconds=30.0, estimated_memory_mb=50.0)
+    @with_resource_limits(timeout_seconds=30.0, estimated_memory_mb=50.0)  # type: ignore[arg-type]
     @mcp.tool()
     def validate_optimization_input(
         problem_type: str,

@@ -451,14 +451,20 @@ def optimize_production(
         # Convert simple format to full production planning format
         product_list = []
         for product in products:
+            # Handle both profit and cost fields
+            profit_value = product.get("profit", 0.0)
+            if "cost" in product:
+                profit_value = -product["cost"]  # Convert cost to negative profit
+
+            excluded_keys = ["name", "profit", "cost"]
             product_list.append(
                 {
                     "name": product["name"],
-                    "profit": product["profit"],
-                    "resources": {k: v for k, v in product.items() if k not in ["name", "profit"]},
+                    "profit": profit_value,
+                    "resources": {k: v for k, v in product.items() if k not in excluded_keys},
                     "production_time": 1.0,
                     "min_production": 0.0,
-                    "max_production": None,
+                    "max_production": 1000000.0,  # Large upper bound instead of None
                     "setup_cost": 0.0,
                 }
             )
@@ -472,10 +478,21 @@ def optimize_production(
                 "renewable": True,
             }
 
+        # Add minimal demand constraints for each product
+        demand_constraints = []
+        for product in product_list:
+            demand_constraints.append(
+                {
+                    "product": product["name"],
+                    "min_demand": 0.0,
+                    "max_demand": 1000000.0,  # Large upper bound instead of None
+                }
+            )
+
         input_data = {
             "products": product_list,
             "resources": resources,
-            "demand_constraints": [],
+            "demand_constraints": demand_constraints,
             "planning_horizon": 1,
             "objective": objective,
             "allow_backorders": False,
@@ -484,6 +501,8 @@ def optimize_production(
 
         result = solve_production_planning(input_data)
         result_dict: dict[str, Any] = result.model_dump()
+        # Convert status to string for compatibility
+        result_dict["status"] = result.status.value
         return result_dict
 
     except Exception as e:

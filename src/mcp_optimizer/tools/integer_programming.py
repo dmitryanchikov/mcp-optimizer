@@ -8,7 +8,16 @@ import time
 from typing import Any
 
 from fastmcp import FastMCP
-from ortools.linear_solver import pywraplp
+
+try:
+    from ortools.linear_solver import pywraplp
+
+    ORTOOLS_AVAILABLE = True
+except ImportError as e:
+    logging.warning(f"OR-Tools not available for integer programming: {e}")
+    pywraplp = None
+    ORTOOLS_AVAILABLE = False
+
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from mcp_optimizer.utils.resource_monitor import with_resource_limits
@@ -92,6 +101,15 @@ def solve_integer_program(input_data: dict[str, Any]) -> OptimizationResult:
     Returns:
         OptimizationResult with optimal solution
     """
+    if not ORTOOLS_AVAILABLE:
+        return OptimizationResult(
+            status=OptimizationStatus.ERROR,
+            objective_value=None,
+            variables={},
+            execution_time=0.0,
+            error_message="OR-Tools is not available. Please install it with 'pip install ortools'",
+        )
+
     start_time = time.time()
 
     try:
@@ -156,8 +174,25 @@ def solve_integer_program(input_data: dict[str, Any]) -> OptimizationResult:
         for i, constraint_def in enumerate(ip_input.constraints):
             constraint_name = constraint_def.name or f"constraint_{i}"
 
-            # Build constraint expression
-            constraint = solver.Constraint(-solver.infinity(), solver.infinity(), constraint_name)
+            # Determine bounds based on operator
+            if constraint_def.operator == "<=":
+                lower_bound = -solver.infinity()
+                upper_bound = constraint_def.rhs
+            elif constraint_def.operator == ">=":
+                lower_bound = constraint_def.rhs
+                upper_bound = solver.infinity()
+            elif constraint_def.operator == "==":
+                lower_bound = constraint_def.rhs
+                upper_bound = constraint_def.rhs
+            else:
+                return OptimizationResult(
+                    status=OptimizationStatus.ERROR,
+                    error_message=f"Unknown constraint operator '{constraint_def.operator}' in constraint '{constraint_name}'",
+                    execution_time=time.time() - start_time,
+                )
+
+            # Build constraint with proper bounds
+            constraint = solver.Constraint(lower_bound, upper_bound, constraint_name)
 
             for var_name, coeff in constraint_def.expression.items():
                 if var_name in variables:
@@ -168,15 +203,6 @@ def solve_integer_program(input_data: dict[str, Any]) -> OptimizationResult:
                         error_message=f"Unknown variable '{var_name}' in constraint '{constraint_name}'",
                         execution_time=time.time() - start_time,
                     )
-
-            # Set constraint bounds based on operator
-            if constraint_def.operator == "<=":
-                constraint.SetUB(constraint_def.rhs)
-            elif constraint_def.operator == ">=":
-                constraint.SetLB(constraint_def.rhs)
-            elif constraint_def.operator == "==":
-                constraint.SetLB(constraint_def.rhs)
-                constraint.SetUB(constraint_def.rhs)
 
             constraints.append(constraint)
 

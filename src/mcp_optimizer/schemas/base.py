@@ -13,6 +13,7 @@ class OptimizationStatus(str, Enum):
     FEASIBLE = "feasible"
     INFEASIBLE = "infeasible"
     UNBOUNDED = "unbounded"
+    TIME_LIMIT = "time_limit"
     ERROR = "error"
 
 
