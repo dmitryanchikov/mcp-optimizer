@@ -90,44 +90,13 @@ pip install "mcp-optimizer[stable]"
 
 #### Claude Desktop Integration
 
-**Option 1: Using uvx (Recommended)**
+**Option 1: Using Docker (Recommended)**
 1. Install Claude Desktop from [claude.ai](https://claude.ai/download)
-2. Open Claude Desktop → Settings → Developer → Edit Config
-3. Add to your `claude_desktop_config.json`:
-```json
-{
-  "mcpServers": {
-    "mcp-optimizer": {
-      "command": "uvx",
-      "args": ["mcp-optimizer"]
-    }
-  }
-}
-```
-4. Restart Claude Desktop and look for the 🔨 tools icon
-
-**Option 2: Using pip**
-```bash
-pip install mcp-optimizer
-```
-Then add to your Claude Desktop config:
-```json
-{
-  "mcpServers": {
-    "mcp-optimizer": {
-      "command": "mcp-optimizer"
-    }
-  }
-}
-```
-
-**Option 3: Using Docker**
-
-*Method A: Docker with STDIO transport (Recommended for MCP clients)*
+2. Pull the Docker image:
 ```bash
 docker pull ghcr.io/dmitryanchikov/mcp-optimizer:latest
 ```
-Then add to your Claude Desktop config:
+3. Add to your `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
@@ -142,8 +111,41 @@ Then add to your Claude Desktop config:
   }
 }
 ```
+4. Restart Claude Desktop and look for the 🔨 tools icon
 
-*Method B: Docker with SSE transport (for remote MCP clients)*
+**Option 2: Using pip + venv**
+```bash
+# Create virtual environment and install
+python -m venv .venv
+source .venv/bin/activate  # Linux/macOS
+pip install mcp-optimizer
+```
+Then add to your Claude Desktop config:
+```json
+{
+  "mcpServers": {
+    "mcp-optimizer": {
+      "command": "mcp-optimizer"
+    }
+  }
+}
+```
+
+**Option 3: Using uvx**
+Add to your `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "mcp-optimizer": {
+      "command": "uvx",
+      "args": ["mcp-optimizer"]
+    }
+  }
+}
+```
+*Note: On macOS, uvx provides limited functionality (PuLP solver only) or see [🔧 macOS uvx Troubleshooting](#-macos-uvx-troubleshooting)*
+
+**Advanced Docker Setup (for remote MCP clients)**
 ```bash
 # Run SSE server on port 8000 (uses environment variable)
 docker run -d -p 8000:8000 -e TRANSPORT_MODE=sse \
@@ -164,8 +166,34 @@ curl -i http://localhost:8000/sse
 #### Cursor Integration
 
 1. Install the MCP extension in Cursor
-2. Add mcp-optimizer to your workspace settings:
+2. Add mcp-optimizer to your workspace settings (Docker recommended):
 ```json
+{
+  "mcp.servers": {
+    "mcp-optimizer": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "ghcr.io/dmitryanchikov/mcp-optimizer:latest",
+        "python", "main.py"
+      ]
+    }
+  }
+}
+```
+
+**Alternative configurations:**
+```json
+// Using pip installation
+{
+  "mcp.servers": {
+    "mcp-optimizer": {
+      "command": "mcp-optimizer"
+    }
+  }
+}
+
+// Using uvx (limited functionality on macOS)
 {
   "mcp.servers": {
     "mcp-optimizer": {
@@ -178,7 +206,11 @@ curl -i http://localhost:8000/sse
 
 #### Other LLM Clients
 
-For other MCP-compatible clients (Continue, Cody, etc.), use similar configuration patterns with the appropriate command for your installation method.
+For other MCP-compatible clients (Continue, Cody, etc.), use similar configuration patterns. **Recommended priority:**
+
+1. **Docker** (maximum stability across platforms)
+2. **pip + venv** (standard Python approach)  
+3. **uvx** (quick testing, limited on macOS)
 
 ### Advanced Installation Options
 
