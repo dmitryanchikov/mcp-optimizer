@@ -41,9 +41,7 @@
 /.dockerignore @dmitryanchikov
 
 # Git Flow and policies
-/.github/BRANCH_POLICY.md @dmitryanchikov
 /.github/RELEASE_PROCESS.md @dmitryanchikov
-/.github/BRANCH_PROTECTION.md @dmitryanchikov
 /.github/pull_request_template.md @dmitryanchikov
 
 # Security-sensitive files

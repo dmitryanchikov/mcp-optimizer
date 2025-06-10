@@ -33,6 +33,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+stable = [
+    "fastmcp==2.7.0",
+    "sse-starlette==2.2.1", 
+    "starlette==0.46.1",
+    "uvicorn==0.34.0"
+]
 dev = [
     "pytest>=7.4.0",
     "pytest-asyncio>=0.26.0",
@@ -51,8 +57,8 @@ examples = [
 [project.urls]
 Homepage = "https://github.com/dmitryanchikov/mcp-optimizer"
 Repository = "https://github.com/dmitryanchikov/mcp-optimizer"
-Documentation = "https://github.com/dmitryanchikov/mcp-optimizer/blob/main/README.md"
-Issues = "https://github.com/dmitryanchikov/mcp-optimizer/issues"
+Documentation = "https://github.com/dmitryanchikov/mcp-optimizer#readme"
+"Bug Tracker" = "https://github.com/dmitryanchikov/mcp-optimizer/issues"
 
 [project.scripts]
 mcp-optimizer = "mcp_optimizer.main:cli_main"
@@ -93,6 +99,9 @@ filterwarnings = [
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
+    "stress: marks tests as stress/performance tests (deselect with '-m \"not stress\"')",
+    "robustness: marks tests as robustness/edge-case tests",
+    "timeout: marks tests with timeout limits",
 ]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
@@ -150,6 +159,10 @@ warn_unreachable = false
 
 [[tool.mypy.overrides]]
 module = "mcp_optimizer.tools.knapsack"
+warn_unreachable = false
+
+[[tool.mypy.overrides]]
+module = "mcp_optimizer.tools.validation"
 warn_unreachable = false
 
 [tool.ruff]

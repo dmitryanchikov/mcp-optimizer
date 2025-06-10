@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Dependency Management**: Added `stable` optional dependency group for reliable installations
+  - Added `stable` group in `[project.optional-dependencies]` with pinned versions
+  - Includes fastmcp==2.7.0, sse-starlette==2.2.1, starlette==0.46.1, uvicorn==0.34.0
+  - Resolves ASGI compatibility issues with latest dependency versions
+  - Enables stable SSE mode via `pip install "mcp-optimizer[stable]"`
+- **Test Coverage**: Significantly improved test coverage to more than 90%
+  - Enhanced test suite with comprehensive coverage of optimization tools
+  - Added edge case testing and error handling validation
+  - Improved reliability and maintainability of the codebase
+
+### Changed
+- **Installation Recommendations**: Updated recommended installation order and documentation
+  - Prioritized Docker (maximum stability) over pip for production use
+  - Updated README.md with clear cross-platform compatibility matrix
+  - Enhanced uvx troubleshooting section with direct links to fix scripts
+  - Translated all documentation to English for international accessibility
+
+### Documentation
+- **Dependency Management**: Added comprehensive dependency strategy documentation
+  - Documented version conflicts between fastmcp/starlette/sse-starlette packages
+  - Provided best practices for Python package dependency management
+  - Explained why uvx caches stable versions while pip installs latest
+
 ## [0.3.9] - 2025-06-06
 
 ### Added

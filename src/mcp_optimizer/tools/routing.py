@@ -11,7 +11,17 @@ import time
 from typing import Any
 
 from fastmcp import FastMCP
-from ortools.constraint_solver import pywrapcp, routing_enums_pb2
+
+try:
+    from ortools.constraint_solver import pywrapcp, routing_enums_pb2
+
+    ORTOOLS_AVAILABLE = True
+except ImportError as e:
+    logging.warning(f"OR-Tools not available for routing: {e}")
+    pywrapcp = None
+    routing_enums_pb2 = None
+    ORTOOLS_AVAILABLE = False
+
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from mcp_optimizer.utils.resource_monitor import with_resource_limits
@@ -155,6 +165,15 @@ def solve_traveling_salesman(input_data: dict[str, Any]) -> OptimizationResult:
     Returns:
         OptimizationResult with route and total distance
     """
+    if not ORTOOLS_AVAILABLE:
+        return OptimizationResult(
+            status=OptimizationStatus.ERROR,
+            objective_value=None,
+            variables={},
+            execution_time=0.0,
+            error_message="OR-Tools is not available. Please install it with 'pip install ortools'",
+        )
+
     start_time = time.time()
 
     try:
@@ -297,6 +316,15 @@ def solve_vehicle_routing(input_data: dict[str, Any]) -> OptimizationResult:
     Returns:
         OptimizationResult with routes for all vehicles
     """
+    if not ORTOOLS_AVAILABLE:
+        return OptimizationResult(
+            status=OptimizationStatus.ERROR,
+            objective_value=None,
+            variables={},
+            execution_time=0.0,
+            error_message="OR-Tools is not available. Please install it with 'pip install ortools'",
+        )
+
     start_time = time.time()
 
     try:

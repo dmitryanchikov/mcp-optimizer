@@ -7,26 +7,84 @@
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://python.org)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
+📖 **Quick Links:** [🚀 Quick Start](#-quick-start) | [🔧 macOS Troubleshooting](#-macos-uvx-troubleshooting) | [📊 Examples](#-usage-examples) | [🎯 Features](#-features)
+
 ## 🚀 Quick Start
 
-### 🚀 Method 1: uvx (Recommended - No Installation Required!)
-```bash
-# Works instantly without any setup!
-uvx mcp-optimizer
+### Recommended Installation Methods (by Priority)
 
-# That's it! The server is now running and ready for MCP clients.
+### 1. 🐳 Docker (Recommended) - Cross-platform
+**Most stable method with full functionality**
+
+```bash
+# Run with STDIO transport (for MCP clients)
+docker run --rm -i ghcr.io/dmitryanchikov/mcp-optimizer:latest
+
+# Run with SSE transport (for remote clients)
+docker run -d -p 8000:8000 -e TRANSPORT_MODE=sse \
+  ghcr.io/dmitryanchikov/mcp-optimizer:latest
+
+# Check SSE endpoint
+curl -i http://localhost:8000/sse
 ```
 
-### 📦 Method 2: pip install
+### 2. 📦 pip + venv - Cross-platform  
+**Standard approach**
+
 ```bash
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate  # Linux/macOS
+# or .venv\Scripts\activate  # Windows
+
+# Install mcp-optimizer
 pip install mcp-optimizer
 
-# For running integration examples (requires additional dependencies)
-pip install "mcp-optimizer[examples]"
+# For SSE issues, use stable dependency versions:
+# pip install "mcp-optimizer[stable]"
 
-# Run the server
-mcp-optimizer
+# Run (STDIO mode recommended)
+mcp-optimizer --transport stdio
 ```
+
+### 3. 🚀 uvx - Linux/Windows (full), macOS (partially)
+
+```bash
+# Linux/Windows - works out of the box
+uvx mcp-optimizer
+
+# macOS - requires Python 3.12
+uvx --python python3.12 mcp-optimizer
+
+# STDIO mode recommended
+uvx mcp-optimizer --transport stdio
+```
+
+**macOS users:** If you encounter OR-Tools related errors, see [🔧 macOS uvx Troubleshooting](#-macos-uvx-troubleshooting) section for automated fix scripts.
+
+### 🍎 macOS Specifics
+
+**OR-Tools support:**
+- **uvx**: PuLP only (limited functionality)
+- **pip**: full OR-Tools support  
+- **Docker**: full OR-Tools support
+
+**For full OR-Tools support via pip:**
+```bash
+# Install OR-Tools via Homebrew
+brew install or-tools
+
+# Then install mcp-optimizer
+pip install "mcp-optimizer[stable]"
+```
+
+### Transport Mode Recommendations
+
+| Installation Method | Recommended Transport | Why |
+|---------------------|----------------------|-----|
+| Docker | SSE | Full stability |
+| pip + venv | STDIO | Avoids dependency issues with newer versions |
+| uvx | STDIO | Maximum compatibility |
 
 ### Integration with LLM Clients
 
@@ -238,6 +296,125 @@ uvx mcp-optimizer --help
 #   TRANSPORT_MODE={stdio,sse}  Override transport mode
 #   SERVER_HOST=0.0.0.0        Override server host
 #   SERVER_PORT=8000           Override server port
+```
+
+## 🔧 Platform Compatibility & Troubleshooting
+
+### macOS Compatibility
+
+**✅ Full Functionality:**
+- **Homebrew + pip**: `brew install or-tools && pip install mcp-optimizer`
+- **Virtual environments**: `python -m venv venv && source venv/bin/activate && pip install ortools mcp-optimizer`
+- **Docker**: Full OR-Tools support in containers
+
+**⚠️ Limited Functionality:**
+- **uvx (isolated environments)**: Only PuLP solver available due to OR-Tools native library paths
+- **Fallback behavior**: Automatically switches to PuLP when OR-Tools unavailable
+
+**Common Issues & Solutions:**
+
+1. **OR-Tools "Library not loaded" error:**
+   ```bash
+   # Solution: Install via Homebrew
+   brew install or-tools
+   # Then use regular pip/venv instead of uvx
+   ```
+
+2. **uvx shows OR-Tools warnings:**
+   ```bash
+   WARNING: OR-Tools not available: No module named 'ortools'
+   ```
+   This is expected - uvx provides fallback functionality with PuLP solver.
+
+3. **Best practices for macOS:**
+   - Use Docker for production deployments
+   - Use Homebrew + pip for development
+   - Use uvx for quick testing (limited functionality)
+
+### Linux/Windows Compatibility
+
+**✅ Full Functionality:**
+- **uvx**: Works out of the box with OR-Tools
+- **pip**: Standard installation
+- **Docker**: Recommended for production
+
+### Solver Availability by Platform
+
+  | Platform | uvx | pip | Docker |
+  |----------|-----|-----|--------|
+  | **macOS** | PuLP only | ✅ Full | ✅ Full |
+  | **Linux** | ✅ Full | ✅ Full | ✅ Full |
+  | **Windows** | ✅ Full | ✅ Full | ✅ Full |
+
+**Solver Features:**
+- **OR-Tools**: Advanced algorithms (CP-SAT, routing, scheduling)
+- **PuLP**: Basic linear programming, reliable fallback
+
+## 🔧 macOS uvx Troubleshooting 
+
+### Problem: OR-Tools Library Issues with uvx
+
+**Common Error Messages:**
+```
+Library not loaded: /Users/corentinl/work/stable/temp_python3.13/lib/libscip.9.2.dylib
+ImportError: No module named 'ortools'
+WARNING: OR-Tools not available
+```
+
+**Root Cause**: OR-Tools binary wheels contain hardcoded library paths that fail in uvx isolated environments. This is a macOS-specific issue due to how uvx isolates dependencies.
+
+### 📊 Functionality Impact by Installation Method
+
+**✅ Available with uvx + fallback (PuLP solver only)**:
+- **Linear Programming** - Basic optimization, simplex method
+- **Financial Optimization** - Portfolio optimization, risk management  
+- **Production Planning** - Resource allocation, inventory management
+
+**❌ Lost with uvx (requires OR-Tools)**:
+- **Assignment Problems** - Hungarian algorithm, transportation problems
+- **Integer Programming** - Mixed-integer, binary programming (SCIP/CBC)
+- **Knapsack Problems** - Discrete optimization, multiple variants
+- **Vehicle Routing** - TSP, CVRP, time windows (constraint programming)
+- **Job Scheduling** - CP-SAT solver, resource planning
+
+### 🛠️ Solutions (in order of preference)
+
+#### 1. Automated Fix Script (Recommended)
+```bash
+# Smart adaptive script - no hardcoded versions!
+# Automatically detects your system libraries and Python versions
+./scripts/fix_macos_uvx.sh
+
+# Then uvx works with full functionality
+uvx mcp-optimizer --transport stdio
+```
+
+#### 2. Manual Fix
+```bash
+# Install system dependencies
+brew install or-tools scip
+
+# Create symlink for hardcoded path
+sudo mkdir -p /Users/corentinl/work/stable/temp_python3.13/lib/
+sudo ln -sf /opt/homebrew/lib/libscip.9.2.dylib /Users/corentinl/work/stable/temp_python3.13/lib/libscip.9.2.dylib
+
+# Test fix
+uvx mcp-optimizer --help
+```
+
+#### 3. Use pip (Always Works)
+```bash
+# Install dependencies first
+brew install or-tools
+
+# Install package
+pip install mcp-optimizer
+mcp-optimizer
+```
+
+#### 4. Use Docker (Production Ready)
+```bash
+docker run -p 8000:8000 mcp-optimizer
 ```
 
 ## 🎯 Features

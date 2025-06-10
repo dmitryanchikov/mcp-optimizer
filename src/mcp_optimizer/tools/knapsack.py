@@ -5,7 +5,15 @@ import time
 from typing import Any
 
 from fastmcp import FastMCP
-from ortools.algorithms.python import knapsack_solver
+
+try:
+    from ortools.algorithms.python import knapsack_solver
+
+    ORTOOLS_AVAILABLE = True
+except ImportError as e:
+    logging.warning(f"OR-Tools not available for knapsack solver: {e}")
+    knapsack_solver = None
+    ORTOOLS_AVAILABLE = False
 
 from mcp_optimizer.config import settings
 from mcp_optimizer.utils.resource_monitor import with_resource_limits
@@ -23,6 +31,15 @@ def solve_knapsack_problem(
     max_items_per_type: int | None = None,
 ) -> dict[str, Any]:
     """Solve knapsack optimization problems using OR-Tools."""
+    if not ORTOOLS_AVAILABLE:
+        return {
+            "status": "error",
+            "total_value": None,
+            "selected_items": [],
+            "execution_time": 0.0,
+            "error_message": "OR-Tools is not available. Please install it with 'pip install ortools'",
+        }
+
     try:
         # Validate input
         if not items:
@@ -77,7 +94,8 @@ def solve_knapsack_problem(
         start_time = time.time()
 
         # Choose appropriate solver based on constraints
-        if volume_capacity and any("volume" in item for item in items):
+        has_volume_constraints = volume_capacity and any("volume" in item for item in items)
+        if has_volume_constraints:
             # Use multidimensional solver for volume constraints
             solver = knapsack_solver.KnapsackSolver(
                 knapsack_solver.KNAPSACK_MULTIDIMENSION_BRANCH_AND_BOUND_SOLVER,
@@ -183,7 +201,7 @@ def solve_knapsack_problem(
                 "solver_info": {
                     "solver_name": "OR-Tools KnapsackSolver",
                     "algorithm": "Dynamic Programming"
-                    if not volume_capacity
+                    if not has_volume_constraints
                     else "Branch and Bound",
                     "items_count": len(items),
                     "capacity": capacity,
@@ -199,7 +217,7 @@ def solve_knapsack_problem(
                 "solver_info": {
                     "solver_name": "OR-Tools KnapsackSolver",
                     "algorithm": "Dynamic Programming"
-                    if not volume_capacity
+                    if not has_volume_constraints
                     else "Branch and Bound",
                     "items_count": len(items),
                     "capacity": capacity,
