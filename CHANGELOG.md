@@ -7,11 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-- **Release Tooling**: Renamed finalize release script to reflect its manual nature
-  - Renamed `scripts/finalize_release.py` → `scripts/manual_finalize_release.py`
-  - Updated all documentation references to reflect emergency/fallback purpose
-  - Enhanced script description to emphasize manual use when CI/CD automation fails
+## [0.4.0] - 2025-06-11
 
 ### Added
 - **Dependency Management**: Added `stable` optional dependency group for reliable installations
@@ -25,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Improved reliability and maintainability of the codebase
 
 ### Changed
+- **Release Tooling**: Renamed finalize release script to reflect its manual nature
+  - Renamed `scripts/finalize_release.py` → `scripts/manual_finalize_release.py`
+  - Updated all documentation references to reflect emergency/fallback purpose
+  - Enhanced script description to emphasize manual use when CI/CD automation fails
 - **Installation Recommendations**: Updated recommended installation order and documentation
   - Prioritized Docker (maximum stability) over pip for production use
   - Updated README.md with clear cross-platform compatibility matrix
