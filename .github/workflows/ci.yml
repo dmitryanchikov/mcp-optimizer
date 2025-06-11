@@ -738,19 +738,19 @@ jobs:
         
         echo "🔄 Creating PR to merge main back to develop for $TYPE_DISPLAY v$VERSION..."
         
-        # Create merge branch from main
+        # Create merge branch from DEVELOP
         MERGE_BRANCH="merge/$TYPE_BRANCH-v$VERSION-to-develop"
-        git checkout main
-        git pull origin main
+        git checkout develop
+        git pull origin develop
         git checkout -b "$MERGE_BRANCH"
         
-        # Attempt merge with develop
-        git fetch origin develop
+        # Attempt merge with main
+        git fetch origin main
         
-        echo "🔀 Attempting to merge develop into $TYPE_DISPLAY branch..."
+        echo "🔀 Attempting to merge main into develop..."
         
         # Try merge with automatic conflict resolution for workflow files
-        if git merge origin/develop --no-ff -m "chore: merge $TYPE_DISPLAY v$VERSION back to develop" -X ours; then
+        if git merge origin/main --no-ff -m "chore: merge $TYPE_DISPLAY v$VERSION back to develop" -X ours; then
           echo "✅ Merge successful with automatic conflict resolution"
           git push origin "$MERGE_BRANCH"
           
@@ -775,7 +775,7 @@ jobs:
             --label "$TYPE_DISPLAY,merge-back"
           
           echo "✅ PR created to merge main back to develop"
-        elif git merge origin/develop --no-ff -m "chore: merge $TYPE_DISPLAY v$VERSION back to develop"; then
+        elif git merge origin/main --no-ff -m "chore: merge $TYPE_DISPLAY v$VERSION back to develop"; then
           # Merge successful
           git push origin "$MERGE_BRANCH"
           

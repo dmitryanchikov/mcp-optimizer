@@ -1,5 +1,17 @@
 #!/usr/bin/env python3
-"""Finalize release script for MCP Optimizer - creates tags and merges back to develop."""
+"""Emergency fallback script for manual release finalization when CI/CD automation fails.
+
+This script provides manual release finalization capabilities when the automated CI/CD pipeline
+is unable to complete the release process. It should only be used in emergency situations
+where the normal automated release workflow has failed.
+
+Usage:
+    uv run python scripts/manual_finalize_release.py --version 1.2.0
+
+The modern release process is fully automated via CI/CD pipeline.
+This script serves as a fallback option for emergency situations.
+
+Finalize release script for MCP Optimizer - creates tags and merges back to develop."""
 
 import argparse
 import re
@@ -79,19 +91,19 @@ def merge_back_to_develop(version: str) -> None:
     print("Creating PR to merge main back to develop...")
 
     try:
-        # Create merge branch from main
+        # Create merge branch from DEVELOP
         merge_branch = f"merge/release-v{version}-to-develop"
-        run_command(["git", "checkout", "main"])
-        run_command(["git", "pull", "origin", "main"])
+        run_command(["git", "checkout", "develop"])
+        run_command(["git", "pull", "origin", "develop"])
         run_command(["git", "checkout", "-b", merge_branch])
 
-        # Attempt merge with develop
-        run_command(["git", "fetch", "origin", "develop"])
+        # Attempt merge with main
+        run_command(["git", "fetch", "origin", "main"])
         run_command(
             [
                 "git",
                 "merge",
-                "origin/develop",
+                "origin/main",
                 "--no-ff",
                 "-m",
                 f"chore: merge release v{version} back to develop",

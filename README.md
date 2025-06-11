@@ -807,7 +807,7 @@ After PR merge, automatically happens:
 - ✅ Merge main back to develop
 - ✅ Cleanup release branch
 
-**NO NEED** to run `finalize_release.py` manually anymore!
+**NO NEED** to run `manual_finalize_release.py` manually anymore!
 
 > 🔒 **Secure Detection**: Uses hybrid approach combining GitHub branch protection with automated release detection. See [Release Process](.github/RELEASE_PROCESS.md) for details.
 

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Release Tooling**: Renamed finalize release script to reflect its manual nature
+  - Renamed `scripts/finalize_release.py` → `scripts/manual_finalize_release.py`
+  - Updated all documentation references to reflect emergency/fallback purpose
+  - Enhanced script description to emphasize manual use when CI/CD automation fails
+
 ### Added
 - **Dependency Management**: Added `stable` optional dependency group for reliable installations
   - Added `stable` group in `[project.optional-dependencies]` with pinned versions
@@ -101,7 +107,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed branch naming in merge-back process to handle different release types
   - Enhanced commit messages and labels to use appropriate release type terminology
 - **Code Quality**: Replaced Russian comments with English in release scripts
-  - Updated `scripts/finalize_release.py` to use English comments throughout
+  - Updated `scripts/manual_finalize_release.py` to use English comments throughout
   - Improved code maintainability and international collaboration support
 - **Environment Configuration**: Corrected environment variable naming
   - Fixed environment variables by removing incorrect `MCP_OPTIMIZER_` prefix
@@ -432,7 +438,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed branch naming in merge-back process to handle different release types
   - Enhanced commit messages and labels to use appropriate release type terminology
 - **Code Quality**: Replaced Russian comments with English in release scripts
-  - Updated `scripts/finalize_release.py` to use English comments throughout
+  - Updated `scripts/manual_finalize_release.py` to use English comments throughout
   - Improved code maintainability and international collaboration support
 - **Environment Configuration**: Corrected environment variable naming
   - Fixed environment variables by removing incorrect `MCP_OPTIMIZER_` prefix
