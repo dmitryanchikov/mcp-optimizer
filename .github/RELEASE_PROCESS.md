@@ -228,7 +228,7 @@ gh pr create --base main --head release/v1.2.0 --title "Release v1.2.0"
 # ✅ Merge main back to develop
 # ✅ Cleanup release branch
 
-# NO NEED to run finalize_release.py manually anymore!
+# NO NEED to run manual_finalize_release.py manually anymore!
 ```
 
 #### 🔒 Secure Hybrid Release Detection
@@ -297,7 +297,7 @@ All detected releases must pass validation:
 - **Graceful Degradation**: Falls back to next detection method if one fails
 - **Clear Logging**: GitHub Actions logs show detection results and reasoning
 - **Failure Transparency**: Explains why detection failed with actionable guidance
-- **Manual Override**: `scripts/finalize_release.py` available as backup
+- **Manual Override**: `scripts/manual_finalize_release.py` available as backup
 - **Conservative Approach**: Better to miss a release than create a false one
 
 ##### Testing & Validation
@@ -306,14 +306,14 @@ The detection system is thoroughly tested in production through:
 - **Multiple fallback methods**: Ensures reliability across different scenarios  
 - **Comprehensive logging**: GitHub Actions logs show detection results and reasoning
 - **Validation layers**: Multiple checks prevent false positives
-- **Manual override**: `scripts/finalize_release.py` available as backup
+- **Manual override**: `scripts/manual_finalize_release.py` available as backup
 
 #### Fallback: Manual Finalization
 ```bash
 # If automation fails:
 git checkout main
 git pull origin main
-uv run python scripts/finalize_release.py --version 1.2.0
+uv run python scripts/manual_finalize_release.py --version 1.2.0
 ```
 
 ### 5. Automated Publication
@@ -506,25 +506,25 @@ uv run python scripts/release.py --hotfix --type patch
 uv run python scripts/release.py --type minor --dry-run
 ```
 
-#### `scripts/finalize_release.py` - Finalize Releases (AUTOMATED!)
-Creates release tags and handles post-release cleanup. **Now runs automatically after PR merge!**
+#### `scripts/manual_finalize_release.py` - Manual Finalize Releases (Emergency Fallback)
+Emergency fallback script for manual release finalization when CI/CD automation fails.
 
 **Usage Examples:**
 ```bash
-# Auto-detect version (recommended)
-uv run python scripts/finalize_release.py
+# Auto-detect version (emergency use only)
+uv run python scripts/manual_finalize_release.py
 
 # Specific version
-uv run python scripts/finalize_release.py --version 1.2.0
+uv run python scripts/manual_finalize_release.py --version 1.2.0
 
 # Skip CI check (if confident CI passed)
-uv run python scripts/finalize_release.py --skip-ci-check
+uv run python scripts/manual_finalize_release.py --skip-ci-check
 
 # Keep release branch (don't cleanup)
-uv run python scripts/finalize_release.py --skip-cleanup
+uv run python scripts/manual_finalize_release.py --skip-cleanup
 
 # Preview only
-uv run python scripts/finalize_release.py --dry-run
+uv run python scripts/manual_finalize_release.py --dry-run
 ```
 
 ### Script Features
@@ -633,7 +633,7 @@ on:
 # If pipeline fails completely
 git checkout main
 git pull origin main
-uv run python scripts/finalize_release.py --version X.Y.Z --skip-ci-check
+uv run python scripts/manual_finalize_release.py --version X.Y.Z --skip-ci-check
 ```
 
 #### Monitoring & Debugging
@@ -706,14 +706,14 @@ Since direct pushes to `develop` are prohibited by repository settings, all conf
 
 #### Step 1: Create Resolution Branch
 ```bash
-git checkout main
-git pull origin main
+git checkout develop
+git pull origin develop
 git checkout -b merge/release-vX.Y.Z-to-develop
 ```
 
 #### Step 2: Attempt Merge
 ```bash
-git merge develop --no-ff
+git merge main --no-ff
 ```
 
 #### Step 3: Resolve Conflicts
@@ -728,14 +728,14 @@ Automatic merge failed; fix conflicts and then commit the result.
 Open each conflicted file and look for conflict markers:
 ```python
 <<<<<<< HEAD
-# Code from main branch
-def function_main_version():
-    pass
-=======
-# Code from develop branch  
+# Code from develop branch (current branch)
 def function_develop_version():
     pass
->>>>>>> develop
+=======
+# Code from main branch (being merged)
+def function_main_version():
+    pass
+>>>>>>> main
 ```
 
 **Resolution Strategy:**

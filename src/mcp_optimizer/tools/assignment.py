@@ -5,7 +5,6 @@ from typing import Any
 
 from fastmcp import FastMCP
 
-from mcp_optimizer.solvers.ortools_solver import ORToolsSolver
 from mcp_optimizer.utils.resource_monitor import with_resource_limits
 
 logger = logging.getLogger(__name__)
@@ -20,6 +19,8 @@ def solve_assignment_problem(
     maximize: bool = False,
     max_tasks_per_worker: int | None = None,
     min_tasks_per_worker: int | None = None,
+    objective: str | None = None,
+    constraints: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Solve assignment problem using OR-Tools."""
     try:
@@ -48,7 +49,7 @@ def solve_assignment_problem(
                 "total_cost": None,
                 "assignments": [],
                 "execution_time": 0.0,
-                "error_message": f"Cost matrix rows ({len(costs)}) must match workers count ({len(workers)})",
+                "error_message": f"Cost matrix dimensions: rows ({len(costs)}) must match workers count ({len(workers)})",
             }
 
         for i, row in enumerate(costs):
@@ -61,7 +62,64 @@ def solve_assignment_problem(
                     "error_message": f"Cost matrix row {i} length ({len(row)}) must match tasks count ({len(tasks)})",
                 }
 
+        # Handle objective parameter (convert to maximize flag)
+        if objective is not None:
+            maximize = objective.lower() == "maximize"
+
+        # Handle constraints parameter
+        if constraints is not None:
+            # Check for unsupported constraint types
+            forbidden_assignments = constraints.get("forbidden_assignments", [])
+            task_requirements = constraints.get("task_requirements", {})
+
+            if forbidden_assignments:
+                return {
+                    "status": "error",
+                    "total_cost": None,
+                    "assignments": [],
+                    "execution_time": 0.0,
+                    "error_message": "Forbidden assignments constraints are not currently supported",
+                }
+
+            if task_requirements:
+                return {
+                    "status": "error",
+                    "total_cost": None,
+                    "assignments": [],
+                    "execution_time": 0.0,
+                    "error_message": "Task requirements constraints are not currently supported",
+                }
+
+            # Extract worker limits if provided
+            worker_limits = constraints.get("worker_limits", {})
+            if worker_limits:
+                # Convert worker limits to max_tasks_per_worker if all workers have same limit
+                limit_values = list(worker_limits.values())
+                if len(set(limit_values)) == 1 and all(
+                    worker in worker_limits for worker in workers
+                ):
+                    max_tasks_per_worker = limit_values[0]
+                    # If all workers have limit 0 and there are tasks, problem is infeasible
+                    if max_tasks_per_worker == 0 and tasks:
+                        return {
+                            "status": "infeasible",
+                            "total_cost": None,
+                            "assignments": [],
+                            "execution_time": 0.0,
+                            "error_message": "No worker can be assigned any tasks due to constraints",
+                        }
+                else:
+                    return {
+                        "status": "error",
+                        "total_cost": None,
+                        "assignments": [],
+                        "execution_time": 0.0,
+                        "error_message": "Individual worker limits with different values are not currently supported",
+                    }
+
         # Create solver and solve
+        from mcp_optimizer.solvers import ORToolsSolver
+
         solver = ORToolsSolver()
         result = solver.solve_assignment_problem(
             workers=workers,
@@ -71,6 +129,10 @@ def solve_assignment_problem(
             max_tasks_per_worker=max_tasks_per_worker,
             min_tasks_per_worker=min_tasks_per_worker,
         )
+
+        # Add objective to result if specified
+        if objective is not None:
+            result["objective"] = objective
 
         logger.info(f"Assignment problem solved with status: {result.get('status')}")
         return result
@@ -157,7 +219,7 @@ def solve_transportation_problem(
                 "total_cost": None,
                 "flows": [],
                 "execution_time": 0.0,
-                "error_message": f"Cost matrix rows ({len(costs)}) must match suppliers count ({len(suppliers)})",
+                "error_message": f"Cost matrix dimensions: rows ({len(costs)}) must match suppliers count ({len(suppliers)})",
             }
 
         for i, row in enumerate(costs):
@@ -168,6 +230,27 @@ def solve_transportation_problem(
                     "flows": [],
                     "execution_time": 0.0,
                     "error_message": f"Cost matrix row {i} length ({len(row)}) must match consumers count ({len(consumers)})",
+                }
+
+        # Check for negative supply/demand
+        for supplier in suppliers:
+            if supplier["supply"] < 0:
+                return {
+                    "status": "error",
+                    "total_cost": None,
+                    "flows": [],
+                    "execution_time": 0.0,
+                    "error_message": "Supply must be non-negative",
+                }
+
+        for consumer in consumers:
+            if consumer["demand"] < 0:
+                return {
+                    "status": "error",
+                    "total_cost": None,
+                    "flows": [],
+                    "execution_time": 0.0,
+                    "error_message": "Demand must be non-negative",
                 }
 
         # Check supply-demand balance
@@ -184,12 +267,18 @@ def solve_transportation_problem(
             }
 
         # Create solver and solve
+        from mcp_optimizer.solvers import ORToolsSolver
+
         solver = ORToolsSolver()
         result = solver.solve_transportation_problem(
             suppliers=suppliers,
             consumers=consumers,
             costs=costs,
         )
+
+        # Add shipments as alias for flows for backward compatibility
+        if "flows" in result:
+            result["shipments"] = result["flows"]
 
         logger.info(f"Transportation problem solved with status: {result.get('status')}")
         return result

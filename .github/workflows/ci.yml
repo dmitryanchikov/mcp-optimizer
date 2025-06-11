@@ -1,3 +1,24 @@
+# CI/CD Pipeline with separated build and docker-push jobs
+# 
+# Job Structure:
+# 1. build: Always runs - builds Docker image for validation (no push)
+# 2. docker-push-auto: Auto push for main/develop branches (excludes main when release detected)
+# 3. docker-push-manual: Manual push for feature/merge branches (workflow_dispatch only)
+# 4. docker-push-release: Release-specific push with versioned tags
+#
+# Docker Registry Strategy:
+# - main branch → main tag (only for non-release pushes)
+# - develop branch → develop tag  
+# - feature/* → feature-{name} tag (manual only)
+# - merge/* → merge-{name} tag (manual only)
+# - release/* → {version}-rc tag (manual only)
+# - hotfix/* → {version}-hotfix tag (manual only)
+# - releases → versioned tags (v1.2.3, 1.2, 1, latest)
+#
+# Anti-duplication Logic:
+# - docker-push-auto is skipped for main when release is detected
+# - docker-push-release handles all release image pushes
+
 name: CI/CD Pipeline
 
 on:
@@ -15,6 +36,11 @@ on:
         required: false
         default: false
         type: boolean
+      push_docker:
+        description: 'Push Docker image to registry (for non-main/develop branches)'
+        required: false
+        default: false
+        type: boolean
 
 env:
   REGISTRY: ghcr.io
@@ -23,7 +49,7 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
-    if: ${{ !inputs.skip_tests }}
+    if: ${{ github.event_name != 'workflow_dispatch' || !inputs.skip_tests }}
     strategy:
       matrix:
         python-version: ["3.11", "3.12"]
@@ -62,7 +88,7 @@ jobs:
 
   security:
     runs-on: ubuntu-latest
-    if: ${{ !inputs.skip_tests }}
+    if: ${{ github.event_name != 'workflow_dispatch' || !inputs.skip_tests }}
     steps:
     - uses: actions/checkout@v4
 
@@ -93,7 +119,68 @@ jobs:
   build:
     needs: [test, security]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/hotfix/')
+    permissions:
+      contents: read
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-metadata: ${{ steps.build.outputs.metadata }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Extract version from branch name
+      id: version
+      run: |
+        if [[ "${{ github.ref }}" == refs/heads/release/* ]]; then
+          VERSION=$(echo "${{ github.ref_name }}" | sed 's/release\///')
+          echo "tag=${VERSION}-rc" >> $GITHUB_OUTPUT
+        elif [[ "${{ github.ref }}" == refs/heads/hotfix/* ]]; then
+          VERSION=$(echo "${{ github.ref_name }}" | sed 's/hotfix\///')
+          echo "tag=${VERSION}-hotfix" >> $GITHUB_OUTPUT
+        elif [[ "${{ github.ref }}" == refs/heads/feature/* ]]; then
+          FEATURE_NAME=$(echo "${{ github.ref_name }}" | sed 's/feature\///' | sed 's/[^a-zA-Z0-9.-]/-/g')
+          echo "tag=feature-${FEATURE_NAME}" >> $GITHUB_OUTPUT
+        elif [[ "${{ github.ref }}" == refs/heads/merge/* ]]; then
+          MERGE_NAME=$(echo "${{ github.ref_name }}" | sed 's/merge\///' | sed 's/[^a-zA-Z0-9.-]/-/g')
+          echo "tag=merge-${MERGE_NAME}" >> $GITHUB_OUTPUT
+        else
+          echo "tag=" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Extract metadata for build
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
+          type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
+          type=raw,value=${{ steps.version.outputs.tag }},enable=${{ steps.version.outputs.tag != '' }}
+
+    - name: Build Docker image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: false
+        load: false
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push=false
+
+  docker-push-auto:
+    needs: [build, release]
+    runs-on: ubuntu-latest
+    if: |
+      (github.ref == 'refs/heads/main' && needs.release.outputs.is_release != 'true') ||
+      github.ref == 'refs/heads/develop'
     permissions:
       contents: read
       packages: write
@@ -106,7 +193,52 @@ jobs:
       uses: docker/setup-buildx-action@v3
 
     - name: Log in to Container Registry
-      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/hotfix/')
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata for auto push
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
+          type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  docker-push-manual:
+    needs: [build]
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' && 
+      inputs.push_docker == true &&
+      github.ref != 'refs/heads/main' && 
+      github.ref != 'refs/heads/develop'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
       uses: docker/login-action@v3
       with:
         registry: ${{ env.REGISTRY }}
@@ -122,36 +254,30 @@ jobs:
         elif [[ "${{ github.ref }}" == refs/heads/hotfix/* ]]; then
           VERSION=$(echo "${{ github.ref_name }}" | sed 's/hotfix\///')
           echo "tag=${VERSION}-hotfix" >> $GITHUB_OUTPUT
+        elif [[ "${{ github.ref }}" == refs/heads/feature/* ]]; then
+          FEATURE_NAME=$(echo "${{ github.ref_name }}" | sed 's/feature\///' | sed 's/[^a-zA-Z0-9.-]/-/g')
+          echo "tag=feature-${FEATURE_NAME}" >> $GITHUB_OUTPUT
+        elif [[ "${{ github.ref }}" == refs/heads/merge/* ]]; then
+          MERGE_NAME=$(echo "${{ github.ref_name }}" | sed 's/merge\///' | sed 's/[^a-zA-Z0-9.-]/-/g')
+          echo "tag=merge-${MERGE_NAME}" >> $GITHUB_OUTPUT
         else
-          echo "tag=" >> $GITHUB_OUTPUT
+          echo "tag=manual-$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
         fi
 
-    - name: Extract metadata
+    - name: Extract metadata for manual push
       id: meta
       uses: docker/metadata-action@v5
       with:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
-          type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
-          type=raw,value=${{ steps.version.outputs.tag }},enable=${{ steps.version.outputs.tag != '' }}
-          type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
-          type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
-          type=match,pattern=release/v(.*),group=1,suffix=-rc
-          type=match,pattern=hotfix/v(.*),group=1,suffix=-hotfix
+          type=raw,value=${{ steps.version.outputs.tag }}
 
-    - name: Debug metadata output
-      run: |
-        echo "GitHub ref: ${{ github.ref }}"
-        echo "Generated tags: ${{ steps.meta.outputs.tags }}"
-        echo "Generated labels: ${{ steps.meta.outputs.labels }}"
-
-    - name: Build and conditionally push Docker image
+    - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
         context: .
         platforms: linux/amd64,linux/arm64
-        # Only push for main, develop, release/*, hotfix/* branches
-        push: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/hotfix/') }}
+        push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
@@ -242,6 +368,7 @@ jobs:
     outputs:
       is_release: ${{ steps.detect_release.outputs.is_release }}
       version: ${{ steps.detect_release.outputs.version }}
+      release_type: ${{ steps.detect_release.outputs.release_type }}
 
     steps:
     - name: Checkout repository
@@ -435,14 +562,12 @@ jobs:
     - name: Build package
       if: steps.detect_release.outputs.is_release == 'true'
       run: uv build
-
     - name: Upload package artifacts
       if: steps.detect_release.outputs.is_release == 'true'
       uses: actions/upload-artifact@v4
       with:
         name: python-package-distributions
         path: dist/
-
     - name: Create GitHub Release
       if: steps.detect_release.outputs.is_release == 'true'
       uses: softprops/action-gh-release@v2
@@ -452,7 +577,6 @@ jobs:
         generate_release_notes: true
         draft: false
         prerelease: ${{ contains(steps.detect_release.outputs.version, '-') }}
-
     - name: Create summary
       if: steps.detect_release.outputs.is_release == 'true'
       run: |
@@ -496,6 +620,7 @@ jobs:
         echo "- ✅ Branch protection rules enforcement" >> $GITHUB_STEP_SUMMARY
         echo "- ✅ Version validation and consistency checks" >> $GITHUB_STEP_SUMMARY
 
+
   pypi-publish:
     needs: [release]
     runs-on: ubuntu-latest
@@ -516,7 +641,7 @@ jobs:
         verbose: true
         print-hash: true
 
-  docker-publish:
+  docker-push-release:
     needs: [release]
     runs-on: ubuntu-latest
     if: needs.release.outputs.is_release == 'true'
@@ -594,66 +719,83 @@ jobs:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         VERSION="${{ needs.release.outputs.version }}"
-        echo "🔄 Creating PR to merge main back to develop for v$VERSION..."
+        RELEASE_TYPE="${{ needs.release.outputs.release_type }}"
         
-        # Create merge branch from main
-        MERGE_BRANCH="merge/release-v$VERSION-to-develop"
-        git checkout main
-        git pull origin main
+        # Determine release type display name
+        if [ "$RELEASE_TYPE" = "hotfix" ]; then
+          TYPE_DISPLAY="hotfix"
+          TYPE_CAPITALIZED="Hotfix"
+          TYPE_BRANCH="hotfix"
+        elif [ "$RELEASE_TYPE" = "emergency" ]; then
+          TYPE_DISPLAY="emergency release"
+          TYPE_CAPITALIZED="Emergency Release"
+          TYPE_BRANCH="emergency-release"
+        else
+          TYPE_DISPLAY="release"
+          TYPE_CAPITALIZED="Release"
+          TYPE_BRANCH="release"
+        fi
+        
+        echo "🔄 Creating PR to merge main back to develop for $TYPE_DISPLAY v$VERSION..."
+        
+        # Create merge branch from DEVELOP
+        MERGE_BRANCH="merge/$TYPE_BRANCH-v$VERSION-to-develop"
+        git checkout develop
+        git pull origin develop
         git checkout -b "$MERGE_BRANCH"
         
-        # Attempt merge with develop
-        git fetch origin develop
+        # Attempt merge with main
+        git fetch origin main
         
-        echo "🔀 Attempting to merge develop into release branch..."
+        echo "🔀 Attempting to merge main into develop..."
         
         # Try merge with automatic conflict resolution for workflow files
-        if git merge origin/develop --no-ff -m "chore: merge release v$VERSION back to develop" -X ours; then
+        if git merge origin/main --no-ff -m "chore: merge $TYPE_DISPLAY v$VERSION back to develop" -X ours; then
           echo "✅ Merge successful with automatic conflict resolution"
           git push origin "$MERGE_BRANCH"
           
           # Create PR
-          PR_BODY="## Merge Release v$VERSION Back to Develop
+          PR_BODY="## Merge $TYPE_CAPITALIZED v$VERSION Back to Develop
 
-        This PR merges changes from release v$VERSION back to the develop branch.
+        This PR merges changes from $TYPE_DISPLAY v$VERSION back to the develop branch.
 
         ### Changes
-        - Release v$VERSION changes from main
-        - Ensures develop is up-to-date with latest release
+        - $TYPE_CAPITALIZED v$VERSION changes from main
+        - Ensures develop is up-to-date with latest $TYPE_DISPLAY
 
         **Auto-generated by CI/CD pipeline**
         
-        **Note**: Conflicts in workflow files were automatically resolved in favor of the release version."
+        **Note**: Conflicts in workflow files were automatically resolved in favor of the $TYPE_DISPLAY version."
           
           gh pr create \
             --base develop \
             --head "$MERGE_BRANCH" \
-            --title "Merge release v$VERSION back to develop" \
+            --title "Merge $TYPE_DISPLAY v$VERSION back to develop" \
             --body "$PR_BODY" \
-            --label "release,merge-back"
+            --label "$TYPE_DISPLAY,merge-back"
           
           echo "✅ PR created to merge main back to develop"
-        elif git merge origin/develop --no-ff -m "chore: merge release v$VERSION back to develop"; then
+        elif git merge origin/main --no-ff -m "chore: merge $TYPE_DISPLAY v$VERSION back to develop"; then
           # Merge successful
           git push origin "$MERGE_BRANCH"
           
           # Create PR
-          PR_BODY="## Merge Release v$VERSION Back to Develop
+          PR_BODY="## Merge $TYPE_CAPITALIZED v$VERSION Back to Develop
 
-        This PR merges changes from release v$VERSION back to the develop branch.
+        This PR merges changes from $TYPE_DISPLAY v$VERSION back to the develop branch.
 
         ### Changes
-        - Release v$VERSION changes from main
-        - Ensures develop is up-to-date with latest release
+        - $TYPE_CAPITALIZED v$VERSION changes from main
+        - Ensures develop is up-to-date with latest $TYPE_DISPLAY
 
         **Auto-generated by CI/CD pipeline**"
           
           gh pr create \
             --base develop \
             --head "$MERGE_BRANCH" \
-            --title "Merge release v$VERSION back to develop" \
+            --title "Merge $TYPE_DISPLAY v$VERSION back to develop" \
             --body "$PR_BODY" \
-            --label "release,merge-back"
+            --label "$TYPE_DISPLAY,merge-back"
           
           echo "✅ PR created to merge main back to develop"
         else
@@ -680,13 +822,13 @@ jobs:
             
             # Push branch with conflicts for manual resolution
             git add .
-            git commit -m "WIP: merge conflicts for release v$VERSION (workflow conflicts auto-resolved)" || true
+            git commit -m "WIP: merge conflicts for $TYPE_DISPLAY v$VERSION (workflow conflicts auto-resolved)" || true
             git push origin "$MERGE_BRANCH" || true
             
             # Create issue for manual resolution
-            ISSUE_BODY="## Merge Conflict During Release v$VERSION
+            ISSUE_BODY="## Merge Conflict During $TYPE_CAPITALIZED v$VERSION
 
-        A merge conflict occurred while creating PR to merge \`main\` back to \`develop\` after release v$VERSION.
+        A merge conflict occurred while creating PR to merge \`main\` back to \`develop\` after $TYPE_DISPLAY v$VERSION.
 
         **🔧 Workflow conflicts were automatically resolved in favor of the main branch.**
 
@@ -700,37 +842,37 @@ jobs:
         1. \`git checkout $MERGE_BRANCH\`
         2. Resolve conflicts in the listed files
         3. \`git add <resolved-files>\`
-        4. \`git commit -m \"resolve: merge conflicts for release v$VERSION\"\`
+        4. \`git commit -m \"resolve: merge conflicts for $TYPE_DISPLAY v$VERSION\"\`
         5. \`git push origin $MERGE_BRANCH\`
-        6. Create PR: \`gh pr create --base develop --head $MERGE_BRANCH --title \"Merge release v$VERSION back to develop\"\`
+        6. Create PR: \`gh pr create --base develop --head $MERGE_BRANCH --title \"Merge $TYPE_DISPLAY v$VERSION back to develop\"\`
 
         ### Branch Created:
         - **Merge Branch**: \`$MERGE_BRANCH\`
         - **Target**: \`develop\`
-        - **Source**: \`main\` (release v$VERSION)
+        - **Source**: \`main\` ($TYPE_DISPLAY v$VERSION)
 
         ### Detailed Resolution Guide:
         See: https://github.com/dmitryanchikov/mcp-optimizer/blob/main/.github/RELEASE_PROCESS.md#merge-conflict-resolution"
             
             gh issue create \
-              --title "Merge conflict: release v$VERSION main→develop" \
+              --title "Merge conflict: $TYPE_DISPLAY v$VERSION main→develop" \
               --body "$ISSUE_BODY" \
-              --label "merge-conflict,release"
+              --label "merge-conflict,$TYPE_DISPLAY"
             
             echo "📝 Issue created for manual conflict resolution"
           else
             echo "✅ All conflicts resolved automatically!"
-            git commit -m "chore: merge release v$VERSION back to develop (auto-resolved conflicts)"
+            git commit -m "chore: merge $TYPE_DISPLAY v$VERSION back to develop (auto-resolved conflicts)"
             git push origin "$MERGE_BRANCH"
             
             # Create PR
-            PR_BODY="## Merge Release v$VERSION Back to Develop
+            PR_BODY="## Merge $TYPE_CAPITALIZED v$VERSION Back to Develop
 
-        This PR merges changes from release v$VERSION back to the develop branch.
+        This PR merges changes from $TYPE_DISPLAY v$VERSION back to the develop branch.
 
         ### Changes
-        - Release v$VERSION changes from main
-        - Ensures develop is up-to-date with latest release
+        - $TYPE_CAPITALIZED v$VERSION changes from main
+        - Ensures develop is up-to-date with latest $TYPE_DISPLAY
 
         **Auto-generated by CI/CD pipeline**
         
@@ -741,10 +883,71 @@ jobs:
             gh pr create \
               --base develop \
               --head "$MERGE_BRANCH" \
-              --title "Merge release v$VERSION back to develop" \
+              --title "Merge $TYPE_DISPLAY v$VERSION back to develop" \
               --body "$PR_BODY" \
-              --label "release,merge-back"
+              --label "$TYPE_DISPLAY,merge-back"
             
             echo "✅ PR created to merge main back to develop"
           fi
+        fi
+
+  summary:
+    needs: [build, docker-push-auto, docker-push-manual, docker-push-release]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+    - name: Generate workflow summary
+      run: |
+        echo "## 🐳 Docker Build & Push Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Build status
+        if [ "${{ needs.build.result }}" = "success" ]; then
+          echo "✅ **Build**: Docker image built successfully" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Build**: Failed to build Docker image" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        # Auto push status (main/develop)
+        if [ "${{ needs.docker-push-auto.result }}" = "success" ]; then
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "✅ **Auto Push**: Pushed to registry with \`main\` tag" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ github.ref }}" = "refs/heads/develop" ]; then
+            echo "✅ **Auto Push**: Pushed to registry with \`develop\` tag" >> $GITHUB_STEP_SUMMARY
+          fi
+        elif [ "${{ needs.docker-push-auto.result }}" = "skipped" ]; then
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "⏭️ **Auto Push**: Skipped for main (release detected - using docker-push-release instead)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⏭️ **Auto Push**: Skipped (not main/develop branch)" >> $GITHUB_STEP_SUMMARY
+          fi
+        elif [ "${{ needs.docker-push-auto.result }}" = "failure" ]; then
+          echo "❌ **Auto Push**: Failed to push to registry" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        # Manual push status
+        if [ "${{ needs.docker-push-manual.result }}" = "success" ]; then
+          echo "✅ **Manual Push**: Pushed to registry (workflow_dispatch)" >> $GITHUB_STEP_SUMMARY
+        elif [ "${{ needs.docker-push-manual.result }}" = "skipped" ]; then
+          echo "⏭️ **Manual Push**: Skipped (not requested via workflow_dispatch)" >> $GITHUB_STEP_SUMMARY
+        elif [ "${{ needs.docker-push-manual.result }}" = "failure" ]; then
+          echo "❌ **Manual Push**: Failed to push to registry" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        # Release push status
+        if [ "${{ needs.docker-push-release.result }}" = "success" ]; then
+          echo "✅ **Release Push**: Pushed release image with versioned tags" >> $GITHUB_STEP_SUMMARY
+        elif [ "${{ needs.docker-push-release.result }}" = "skipped" ]; then
+          echo "⏭️ **Release Push**: Skipped (not a release)" >> $GITHUB_STEP_SUMMARY
+        elif [ "${{ needs.docker-push-release.result }}" = "failure" ]; then
+          echo "❌ **Release Push**: Failed to push release image" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📋 Branch Info" >> $GITHUB_STEP_SUMMARY
+        echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Event**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "- **Manual Push Requested**: ${{ inputs.push_docker }}" >> $GITHUB_STEP_SUMMARY
         fi
