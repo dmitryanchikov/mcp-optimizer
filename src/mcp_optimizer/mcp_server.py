@@ -131,11 +131,7 @@ def create_mcp_server() -> FastMCP[dict[str, str]]:
     """Create and configure the MCP server with optimization tools."""
 
     # Create MCP server
-    mcp: FastMCP[dict[str, str]] = FastMCP(
-        "MCP Optimizer",
-        description="Mathematical optimization server providing linear programming, "
-        "integer programming, routing, scheduling, and other optimization tools",
-    )
+    mcp: FastMCP[dict[str, str]] = FastMCP("MCP Optimizer")
 
     # Register all optimization tools
     register_linear_programming_tools(mcp)
