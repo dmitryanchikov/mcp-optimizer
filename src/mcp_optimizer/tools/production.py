@@ -371,22 +371,16 @@ def solve_production_planning(input_data: dict[str, Any]) -> OptimizationResult:
 
                     if resource_name not in resource_utilization:
                         resource_utilization[resource_name] = []
-                    resource_utilization[resource_name].append(float(usage))
+                    resource_list = resource_utilization[resource_name]
+                    resource_list.append(float(usage))
 
                 production_plan.append(period_plan)
 
             # Calculate summary statistics
-            summary = {
-                "total_profit": total_profit,
-                "total_cost": total_cost,
-                "total_production_time": total_time,
-                "planning_horizon": horizon,
-                "resource_utilization_summary": {},
-            }
-
+            resource_utilization_summary: dict[str, dict[str, float]] = {}
             for resource_name, usage_list in resource_utilization.items():
                 resource = resources[resource_name]
-                summary["resource_utilization_summary"][resource_name] = {
+                resource_utilization_summary[resource_name] = {
                     "total_usage": sum(usage_list),
                     "average_utilization": sum(u / resource.available for u in usage_list)
                     / len(usage_list)
@@ -396,6 +390,14 @@ def solve_production_planning(input_data: dict[str, Any]) -> OptimizationResult:
                     if resource.available > 0
                     else 0,
                 }
+
+            summary = {
+                "total_profit": total_profit,
+                "total_cost": total_cost,
+                "total_production_time": total_time,
+                "planning_horizon": horizon,
+                "resource_utilization_summary": resource_utilization_summary,
+            }
 
             return OptimizationResult(
                 status=OptimizationStatus.OPTIMAL,

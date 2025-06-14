@@ -1,6 +1,6 @@
 [project]
 name = "mcp-optimizer"
-version = "0.4.0"
+version = "0.4.1"
 description = "Mathematical optimization MCP server with PuLP and OR-Tools support"
 authors = [
     { name = "Dmitry Anchikov", email = "dmitry.anchikov@gmail.com" }

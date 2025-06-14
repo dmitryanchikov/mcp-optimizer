@@ -68,6 +68,14 @@ fi
 
 echo -e "${GREEN}✅ Package built: $WHEEL_FILE${NC}"
 
+# Test server creation from built package
+echo -e "\n${YELLOW}🔧 Testing server creation from built package...${NC}"
+uvx --python "$UVX_PYTHON_VERSION" --from "$WHEEL_FILE" python3 -c "
+from mcp_optimizer.mcp_server import create_mcp_server
+server = create_mcp_server()
+print('✅ Server created successfully from wheel')
+"
+
 # ====== UVX TESTS ======
 echo -e "\n${YELLOW}🔶 === UVX TESTING ===${NC}"
 
@@ -191,6 +199,14 @@ if ! pip install "$WHEEL_FILE" >/dev/null 2>&1; then
 fi
 
 echo -e "${GREEN}✅ Package installed via pip${NC}"
+
+# Test server creation after pip install
+echo -e "\n${YELLOW}🔧 Testing server creation after pip install...${NC}"
+python3 -c "
+from mcp_optimizer.mcp_server import create_mcp_server
+server = create_mcp_server()
+print('✅ Server created successfully via pip')
+"
 
 echo -e "\n${YELLOW}📦 Testing stable dependencies group...${NC}"
 # Test installing with stable dependencies
