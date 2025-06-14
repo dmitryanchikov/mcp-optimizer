@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2025-06-15
+
+### Fixed
+- **Server Initialization**: Fixed FastMCP server creation error with unsupported description parameter
+  - Removed unsupported `description` parameter from `FastMCP()` constructor in `mcp_server.py`
+  - Resolves `TypeError: FastMCP.__init__() got an unexpected keyword argument 'description'` on startup
+  - Enhanced test coverage to catch initialization errors in both development and production environments
+
+### Added
+- **Test Coverage**: Enhanced existing test scripts to catch server initialization errors
+  - Added server creation validation to `scripts/test.sh` before running pytest suite
+  - Added server creation checks to `scripts/test_local_package.sh` for both uvx and pip installations
+  - Integrated import validation tests to catch compatibility issues between development and production environments
+  - Tests now verify server creation in isolated environments to catch dependency version conflicts
+
 ## [0.4.0] - 2025-06-11
 
 ### Added
