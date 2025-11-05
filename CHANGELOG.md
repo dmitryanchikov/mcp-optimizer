@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Test Coverage Enhancement**: Comprehensive test coverage improvement from 91% to 93%
+  - Added 66 new tests across critical modules (41 in Phase 1, 25 in Phase 2)
+  - **Phase 1**: Critical path coverage - fallback solver, __main__ module, import error handling
+    - `fallback_solver.py`: 0% → 100% (23 tests)
+    - `__main__.py`: 0% → 100% (3 tests)
+    - `solvers/__init__.py`: Enhanced import fallback testing (15 tests)
+  - **Phase 2**: Solver robustness and edge cases
+    - `pulp_solver.py`: 84% → 100% (15 tests) - FULL COVERAGE
+    - `ortools_solver.py`: Enhanced edge case coverage (10 tests)
+    - Comprehensive testing of solver initialization, fallback mechanisms, error handling
+    - All constraint operators tested (<=, >=, ==)
+    - Time limit enforcement and resource constraints validated
+    - Edge cases: unbounded problems, unknown statuses, large coefficients, negative costs
+  - Total: 598 tests passing, 181 lines remaining for 95%+ target
+  - Test categories: solver initialization, error handling, edge cases, constraint validation
+
 ## [0.4.1] - 2025-06-15
 
 ### Fixed

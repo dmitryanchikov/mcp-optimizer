@@ -2,8 +2,8 @@
 
 🚀 **Mathematical Optimization MCP Server** with PuLP and OR-Tools support
 
-[![Tests](https://img.shields.io/badge/tests-66%20passed-brightgreen)](https://github.com/dmitryanchikov/mcp-optimizer)
-[![Coverage](https://img.shields.io/badge/coverage-48%25-yellow)](https://github.com/dmitryanchikov/mcp-optimizer)
+[![Tests](https://img.shields.io/badge/tests-598%20passed-brightgreen)](https://github.com/dmitryanchikov/mcp-optimizer)
+[![Coverage](https://img.shields.io/badge/coverage-93%25-brightgreen)](https://github.com/dmitryanchikov/mcp-optimizer)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://python.org)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
