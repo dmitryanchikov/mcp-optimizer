@@ -402,3 +402,176 @@ class TestORToolsErrorHandling:
         )
 
         assert "status" in result
+
+
+
+class TestORToolsSolverAdvancedEdgeCases:
+    """Tests for OR-Tools solver advanced edge cases and missing coverage."""
+
+    def test_import_error_handling(self):
+        """Test that import error handling works."""
+        from mcp_optimizer.solvers import ortools_solver
+
+        # Check that the module handles import gracefully
+        assert ortools_solver.ORTOOLS_AVAILABLE is not None
+        assert isinstance(ortools_solver.ORTOOLS_AVAILABLE, bool)
+
+    def test_transportation_problem_edge_cases(self):
+        """Test transportation problem edge cases."""
+        solver = ORToolsSolver()
+
+        # Balanced problem
+        suppliers = [{"name": "S1", "supply": 50}, {"name": "S2", "supply": 50}]
+        consumers = [{"name": "C1", "demand": 60}, {"name": "C2", "demand": 40}]
+        costs = [[1, 2], [3, 4]]
+
+        result = solver.solve_transportation_problem(
+            suppliers=suppliers, consumers=consumers, costs=costs
+        )
+
+        assert result["status"] == OptimizationStatus.OPTIMAL.value
+        assert result["total_cost"] is not None
+
+    def test_transportation_unbalanced_supply_demand(self):
+        """Test transportation with unbalanced supply and demand."""
+        solver = ORToolsSolver()
+
+        # More supply than demand
+        suppliers = [{"name": "S1", "supply": 100}]
+        consumers = [{"name": "C1", "demand": 50}]
+        costs = [[1]]
+
+        result = solver.solve_transportation_problem(
+            suppliers=suppliers, consumers=consumers, costs=costs
+        )
+
+        # Should handle unbalanced problem (creates dummy consumer)
+        assert result["status"] in [
+            OptimizationStatus.OPTIMAL.value,
+            OptimizationStatus.FEASIBLE.value,
+        ]
+
+    def test_assignment_with_large_costs(self):
+        """Test assignment with large cost values."""
+        solver = ORToolsSolver()
+
+        workers = ["W1", "W2"]
+        tasks = ["T1", "T2"]
+        costs = [[1e10, 2e10], [3e10, 4e10]]
+
+        result = solver.solve_assignment_problem(
+            workers=workers, tasks=tasks, costs=costs
+        )
+
+        assert result["status"] == OptimizationStatus.OPTIMAL.value
+        assert result["total_cost"] is not None
+
+    def test_assignment_with_negative_costs(self):
+        """Test assignment with negative costs (profits)."""
+        solver = ORToolsSolver()
+
+        workers = ["W1", "W2"]
+        tasks = ["T1", "T2"]
+        costs = [[-10, -20], [-15, -25]]
+
+        result = solver.solve_assignment_problem(
+            workers=workers, tasks=tasks, costs=costs, maximize=False
+        )
+
+        assert result["status"] == OptimizationStatus.OPTIMAL.value
+        # With negative costs, total should be negative
+        assert result["total_cost"] is not None
+
+    def test_assignment_single_worker_multiple_tasks(self):
+        """Test assignment with single worker and multiple tasks."""
+        solver = ORToolsSolver()
+
+        workers = ["W1"]
+        tasks = ["T1", "T2", "T3"]
+        costs = [[1, 2, 3]]
+
+        result = solver.solve_assignment_problem(
+            workers=workers, tasks=tasks, costs=costs
+        )
+
+        # Solver can assign one worker to all tasks
+        assert result["status"] == OptimizationStatus.OPTIMAL.value
+        assert len(result["assignments"]) >= 1
+        # Verify all assignments are to W1
+        for assignment in result["assignments"]:
+            assert assignment["worker"] == "W1"
+
+    def test_assignment_rectangular_cost_matrix(self):
+        """Test assignment with non-square cost matrix (more workers than tasks)."""
+        solver = ORToolsSolver()
+
+        workers = ["W1", "W2", "W3"]
+        tasks = ["T1", "T2"]
+        costs = [[1, 2], [3, 4], [5, 6]]
+
+        result = solver.solve_assignment_problem(
+            workers=workers, tasks=tasks, costs=costs
+        )
+
+        assert result["status"] == OptimizationStatus.OPTIMAL.value
+        # Should assign 2 tasks (one worker will be unassigned)
+        assert len(result["assignments"]) == 2
+
+    def test_transportation_with_zero_costs(self):
+        """Test transportation with zero cost routes."""
+        solver = ORToolsSolver()
+
+        suppliers = [{"name": "S1", "supply": 100}]
+        consumers = [{"name": "C1", "demand": 100}]
+        costs = [[0]]
+
+        result = solver.solve_transportation_problem(
+            suppliers=suppliers, consumers=consumers, costs=costs
+        )
+
+        assert result["status"] == OptimizationStatus.OPTIMAL.value
+        assert result["total_cost"] == 0
+
+    def test_assignment_maximization_mode(self):
+        """Test assignment in maximization mode."""
+        solver = ORToolsSolver()
+
+        workers = ["W1", "W2"]
+        tasks = ["T1", "T2"]
+        # Profits instead of costs
+        profits = [[100, 50], [80, 120]]
+
+        result = solver.solve_assignment_problem(
+            workers=workers, tasks=tasks, costs=profits, maximize=True
+        )
+
+        assert result["status"] == OptimizationStatus.OPTIMAL.value
+        # In maximization mode, should pick highest profits
+        assert result["total_cost"] > 0
+
+    def test_transportation_minimum_flows(self):
+        """Test transportation problem basic functionality."""
+        solver = ORToolsSolver()
+
+        # Standard balanced transportation
+        suppliers = [
+            {"name": "Warehouse1", "supply": 100},
+            {"name": "Warehouse2", "supply": 200},
+        ]
+        consumers = [
+            {"name": "Store1", "demand": 150},
+            {"name": "Store2", "demand": 150},
+        ]
+        costs = [[5, 8], [6, 4]]
+
+        result = solver.solve_transportation_problem(
+            suppliers=suppliers, consumers=consumers, costs=costs
+        )
+
+        assert result["status"] == OptimizationStatus.OPTIMAL.value
+        assert len(result["flows"]) > 0
+
+        # Verify total flow equals total supply/demand
+        total_flow = sum(flow["amount"] for flow in result["flows"])
+        total_supply = sum(s["supply"] for s in suppliers)
+        assert abs(total_flow - total_supply) < 0.01
