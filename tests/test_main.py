@@ -428,3 +428,54 @@ class TestMCPObjectExport:
         # The mcp object should be a FastMCP instance
         assert hasattr(mcp, "run")
         assert hasattr(mcp, "tool")
+
+
+class TestMainModuleExecution:
+    """Tests for __main__ module execution."""
+
+    @patch("mcp_optimizer.main.cli_main")
+    def test_main_module_execution(self, mock_cli_main):
+        """Test that __main__ module calls cli_main."""
+        import importlib.util
+        import sys
+        from pathlib import Path
+
+        # Get path to __main__.py
+        main_module_path = (
+            Path(__file__).parent.parent / "src" / "mcp_optimizer" / "__main__.py"
+        )
+
+        # Load the module
+        spec = importlib.util.spec_from_file_location("__main__", main_module_path)
+        if spec and spec.loader:
+            module = importlib.util.module_from_spec(spec)
+
+            # Execute the module
+            try:
+                spec.loader.exec_module(module)
+            except SystemExit:
+                # cli_main might call sys.exit, which is fine
+                pass
+
+            # Verify cli_main was called
+            mock_cli_main.assert_called_once()
+
+    def test_main_module_imports_cli_main(self):
+        """Test that __main__ module imports cli_main correctly."""
+        # This verifies the import works without actually executing
+        try:
+            from mcp_optimizer.__main__ import cli_main
+
+            assert cli_main is not None
+            assert callable(cli_main)
+        except ImportError as e:
+            pytest.fail(f"Failed to import cli_main from __main__: {e}")
+
+    def test_main_module_can_be_imported(self):
+        """Test that __main__ module can be imported."""
+        try:
+            import mcp_optimizer.__main__
+
+            assert mcp_optimizer.__main__ is not None
+        except ImportError as e:
+            pytest.fail(f"Failed to import __main__ module: {e}")
